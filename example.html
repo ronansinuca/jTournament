@@ -1,105 +1,785 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-us">
+
 <head>
-<title>jTournament v0.1 Example</title>
-<script src='jquery.min.js' type='text/javascript'> </script>
-<script src='jTournament.js' type='text/javascript'> </script>
-<script>
- var matchInfo = {
-    rounds: [{
-        name: "Round1",
-        matches: [{
-            p1: {name: "Bill", logo: "http://www.gravatar.com/avatar/f4c283666dca631b4c058b0030b5fedd?s=30", score: 12, link: "http://www.gravatar.com/avatar/f4c283666dca631b4c058b0030b5fedd?s=100"},
-            p2: {name: "Bob", score: 9},
-            winner: 1
-        }, {
-            p1: {name: "Sam"},
-            p2: {name: "Duddly"},
-            winner: 2
-        }, {
-            p1: {name: "Andy"},
-            p2: {name: "Biff"},
-            winner: 1
-        }, {
-            p1: {name: "Phill"},
-            p2: {name: "Peter"},
-            winner: 1
-        }, {
-            p1: {name: "John"},
-            p2: {name: "Dave"},
-            winner: 2
-        }, {
-            p1: {name: "Xaus"},
-            p2: {name: "James"},
-            winner: 2
-        }, {
-            p1: {name: "Kenny"},
-            p2: {name: "Nick", link: "http://google.com"},
-            winner: 1
-        }, {
-            p1: {name: "Fred"},
-            p2: {name: "Pat"},
-            winner: 2
-        }]
-    }, {
-        name: "Round2",
-        matches: [{
-            p1: {name: "Bill", logo: "http://www.gravatar.com/avatar/f4c283666dca631b4c058b0030b5fedd?s=30", link: "http://www.gravatar.com/avatar/f4c283666dca631b4c058b0030b5fedd?s=100"},
-            p2: null
-        }, {
-            p1: null,
-            p2: null
-        }, {
-            p1: null,
-            p2: null
-        }, {
-            p1: null,
-            p2: null
-        }]
-    }, {
-        name: "Round3",
-        matches: [{
-            p1: null,
-            p2: null
-        }, {
-            p1: null,
-            p2: null
-        }]
-    }, {
-        name: "Round4",
-        matches: [{
-            p1: null,
-            p2: null
-        }, ]
-    }]
+  <title>jTournament v0.1 Example</title>
+  <script src='jquery.min.js' type='text/javascript'> </script>
+  <script src='jTournament.js' type='text/javascript'> </script>
+  <script>
+    var matchInfo = {
+  "finished": true,
+  "games": 20,
+  "groups": [
+    {
+      "num": 1,
+      "round_count": 4,
+      "name": "Grupo A",
+      "rounds": [
+        {
+          "recap": false,
+          "phase": 1,
+          "match_count": 2,
+          "matches": [
+            {
+              "id": 26,
+              "group": 1,
+              "group_level": 1,
+              "game_num": 1,
+              "game_name": "Jogo 1 [ Classifica\u00e7\u00e3o ]",
+              "previous_game": 0,
+              "has_winner": true,
+              "p1": {
+                "id": 1,
+                "name": "Isadora Camacho",
+                "score": 2,
+                "points": 2
+              },
+              "p2": {
+                "id": 8,
+                "name": "Joaquim de Souza",
+                "score": 1,
+                "points": 0
+              },
+              "winner": 1,
+              "phase": 1,
+              "final": 0,
+              "consolation": 0
+            },
+            {
+              "id": 28,
+              "group": 1,
+              "group_level": 1,
+              "game_num": 3,
+              "game_name": "Jogo 3 [ Classifica\u00e7\u00e3o ]",
+              "previous_game": 0,
+              "has_winner": true,
+              "p1": {
+                "id": 7,
+                "name": "Crist\u00f3v\u00e3o Queir\u00f3s",
+                "score": 1,
+                "points": 0
+              },
+              "p2": {
+                "id": 18,
+                "name": "Mirela Rico",
+                "score": 2,
+                "points": 6
+              },
+              "winner": 2,
+              "phase": 1,
+              "final": 0,
+              "consolation": 0
+            }
+          ]
+        },
+        {
+          "recap": false,
+          "phase": 2,
+          "match_count": 4,
+          "matches": [
+            {
+              "id": 30,
+              "group": 1,
+              "group_level": 2,
+              "game_num": 1,
+              "game_name": "Jogo 1",
+              "previous_game": 26,
+              "has_winner": true,
+              "p1": {
+                "id": 1,
+                "name": "Isadora Camacho",
+                "score": 1,
+                "points": 2
+              },
+              "p2": {
+                "id": 18,
+                "name": "Mirela Rico",
+                "score": 2,
+                "points": 6
+              },
+              "winner": 2,
+              "phase": 2,
+              "final": 0,
+              "consolation": 0
+            },
+            {
+              "id": 31,
+              "group": 1,
+              "group_level": 1,
+              "game_num": 2,
+              "game_name": "Jogo 2",
+              "previous_game": 0,
+              "has_winner": true,
+              "p1": {
+                "id": 3,
+                "name": "Lucas Esteves",
+                "score": 1,
+                "points": 0
+              },
+              "p2": {
+                "id": 16,
+                "name": "Pablo Espinoza",
+                "score": 2,
+                "points": 2
+              },
+              "winner": 2,
+              "phase": 2,
+              "final": 0,
+              "consolation": 0
+            },
+            {
+              "id": 32,
+              "group": 1,
+              "group_level": 1,
+              "game_num": 3,
+              "game_name": "Jogo 3",
+              "previous_game": 0,
+              "has_winner": true,
+              "p1": {
+                "id": 15,
+                "name": "Nicole Soares",
+                "score": 1,
+                "points": 0
+              },
+              "p2": {
+                "id": 5,
+                "name": "M\u00e1rcia Azevedo",
+                "score": 2,
+                "points": 2
+              },
+              "winner": 2,
+              "phase": 2,
+              "final": 0,
+              "consolation": 0
+            },
+            {
+              "id": 33,
+              "group": 1,
+              "group_level": 1,
+              "game_num": 4,
+              "game_name": "Jogo 4",
+              "previous_game": 0,
+              "has_winner": true,
+              "p1": {
+                "id": 10,
+                "name": "Matheus Arag\u00e3o",
+                "score": 2,
+                "points": 8
+              },
+              "p2": {
+                "id": 9,
+                "name": "Daiana Aguiar",
+                "score": 1,
+                "points": 0
+              },
+              "winner": 1,
+              "phase": 2,
+              "final": 0,
+              "consolation": 0
+            }
+          ]
+        },
+        {
+          "recap": false,
+          "phase": 3,
+          "match_count": 2,
+          "matches": [
+            {
+              "id": 38,
+              "group": 1,
+              "group_level": 3,
+              "game_num": 1,
+              "game_name": "Jogo 1",
+              "previous_game": 30,
+              "has_winner": true,
+              "p1": {
+                "id": 18,
+                "name": "Mirela Rico",
+                "score": 2,
+                "points": 6
+              },
+              "p2": {
+                "id": 16,
+                "name": "Pablo Espinoza",
+                "score": 1,
+                "points": 2
+              },
+              "winner": 1,
+              "phase": 3,
+              "final": 0,
+              "consolation": 0
+            },
+            {
+              "id": 39,
+              "group": 1,
+              "group_level": 2,
+              "game_num": 2,
+              "game_name": "Jogo 2",
+              "previous_game": 32,
+              "has_winner": true,
+              "p1": {
+                "id": 5,
+                "name": "M\u00e1rcia Azevedo",
+                "score": 1,
+                "points": 2
+              },
+              "p2": {
+                "id": 10,
+                "name": "Matheus Arag\u00e3o",
+                "score": 2,
+                "points": 8
+              },
+              "winner": 2,
+              "phase": 3,
+              "final": 0,
+              "consolation": 0
+            }
+          ]
+        },
+        {
+          "recap": false,
+          "phase": 4,
+          "match_count": 1,
+          "matches": [
+            {
+              "id": 42,
+              "group": 1,
+              "group_level": 4,
+              "game_num": 1,
+              "game_name": "Jogo 1",
+              "previous_game": 38,
+              "has_winner": true,
+              "p1": {
+                "id": 18,
+                "name": "Mirela Rico",
+                "score": 1,
+                "points": 6
+              },
+              "p2": {
+                "id": 10,
+                "name": "Matheus Arag\u00e3o",
+                "score": 2,
+                "points": 8
+              },
+              "winner": 2,
+              "phase": 4,
+              "final": 0,
+              "consolation": 0
+            }
+          ]
+        }
+      ],
+      "players": [
+        
+      ]
+    },
+    {
+      "num": 2,
+      "round_count": 4,
+      "name": "Grupo B",
+      "rounds": [
+        {
+          "recap": false,
+          "phase": 1,
+          "match_count": 2,
+          "matches": [
+            {
+              "id": 27,
+              "group": 2,
+              "group_level": 1,
+              "game_num": 2,
+              "game_name": "Jogo 2 [ Classifica\u00e7\u00e3o ]",
+              "previous_game": 0,
+              "has_winner": true,
+              "p1": {
+                "id": 2,
+                "name": "Gabriel Domingues",
+                "score": 2,
+                "points": 2
+              },
+              "p2": {
+                "id": 11,
+                "name": "Ivan Jimenes",
+                "score": 1,
+                "points": 0
+              },
+              "winner": 1,
+              "phase": 1,
+              "final": 0,
+              "consolation": 0
+            },
+            {
+              "id": 29,
+              "group": 2,
+              "group_level": 1,
+              "game_num": 4,
+              "game_name": "Jogo 4 [ Classifica\u00e7\u00e3o ]",
+              "previous_game": 0,
+              "has_winner": true,
+              "p1": {
+                "id": 19,
+                "name": "Giovana Carmona",
+                "score": 2,
+                "points": 2
+              },
+              "p2": {
+                "id": 13,
+                "name": "Elias Delvalle",
+                "score": 1,
+                "points": 0
+              },
+              "winner": 1,
+              "phase": 1,
+              "final": 0,
+              "consolation": 0
+            }
+          ]
+        },
+        {
+          "recap": false,
+          "phase": 2,
+          "match_count": 4,
+          "matches": [
+            {
+              "id": 34,
+              "group": 2,
+              "group_level": 2,
+              "game_num": 5,
+              "game_name": "Jogo 5",
+              "previous_game": 27,
+              "has_winner": true,
+              "p1": {
+                "id": 2,
+                "name": "Gabriel Domingues",
+                "score": 1,
+                "points": 2
+              },
+              "p2": {
+                "id": 14,
+                "name": "Mariana Maia",
+                "score": 2,
+                "points": 6
+              },
+              "winner": 2,
+              "phase": 2,
+              "final": 0,
+              "consolation": 0
+            },
+            {
+              "id": 35,
+              "group": 2,
+              "group_level": 1,
+              "game_num": 6,
+              "game_name": "Jogo 6",
+              "previous_game": 0,
+              "has_winner": true,
+              "p1": {
+                "id": 4,
+                "name": "Stephany Gusm\u00e3o",
+                "score": 2,
+                "points": 2
+              },
+              "p2": {
+                "id": 19,
+                "name": "Giovana Carmona",
+                "score": 1,
+                "points": 2
+              },
+              "winner": 1,
+              "phase": 2,
+              "final": 0,
+              "consolation": 0
+            },
+            {
+              "id": 36,
+              "group": 2,
+              "group_level": 1,
+              "game_num": 7,
+              "game_name": "Jogo 7",
+              "previous_game": 0,
+              "has_winner": true,
+              "p1": {
+                "id": 17,
+                "name": "Eunice Galindo",
+                "score": 2,
+                "points": 2
+              },
+              "p2": {
+                "id": 6,
+                "name": "Samanta Roque",
+                "score": 1,
+                "points": 0
+              },
+              "winner": 1,
+              "phase": 2,
+              "final": 0,
+              "consolation": 0
+            },
+            {
+              "id": 37,
+              "group": 2,
+              "group_level": 1,
+              "game_num": 8,
+              "game_name": "Jogo 8",
+              "previous_game": 0,
+              "has_winner": true,
+              "p1": {
+                "id": 12,
+                "name": "Kelly Mendon\u00e7a",
+                "score": 1,
+                "points": 0
+              },
+              "p2": {
+                "id": 20,
+                "name": "Murilo Franco",
+                "score": 2,
+                "points": 6
+              },
+              "winner": 2,
+              "phase": 2,
+              "final": 0,
+              "consolation": 0
+            }
+          ]
+        },
+        {
+          "recap": false,
+          "phase": 3,
+          "match_count": 2,
+          "matches": [
+            {
+              "id": 40,
+              "group": 2,
+              "group_level": 2,
+              "game_num": 3,
+              "game_name": "Jogo 3",
+              "previous_game": 34,
+              "has_winner": true,
+              "p1": {
+                "id": 14,
+                "name": "Mariana Maia",
+                "score": 2,
+                "points": 6
+              },
+              "p2": {
+                "id": 4,
+                "name": "Stephany Gusm\u00e3o",
+                "score": 1,
+                "points": 2
+              },
+              "winner": 1,
+              "phase": 3,
+              "final": 0,
+              "consolation": 0
+            },
+            {
+              "id": 41,
+              "group": 2,
+              "group_level": 2,
+              "game_num": 4,
+              "game_name": "Jogo 4",
+              "previous_game": 36,
+              "has_winner": true,
+              "p1": {
+                "id": 17,
+                "name": "Eunice Galindo",
+                "score": 1,
+                "points": 2
+              },
+              "p2": {
+                "id": 20,
+                "name": "Murilo Franco",
+                "score": 2,
+                "points": 6
+              },
+              "winner": 2,
+              "phase": 3,
+              "final": 0,
+              "consolation": 0
+            }
+          ]
+        },
+        {
+          "recap": false,
+          "phase": 4,
+          "match_count": 1,
+          "matches": [
+            {
+              "id": 43,
+              "group": 2,
+              "group_level": 3,
+              "game_num": 2,
+              "game_name": "Jogo 2",
+              "previous_game": 40,
+              "has_winner": true,
+              "p1": {
+                "id": 14,
+                "name": "Mariana Maia",
+                "score": 1,
+                "points": 6
+              },
+              "p2": {
+                "id": 20,
+                "name": "Murilo Franco",
+                "score": 2,
+                "points": 6
+              },
+              "winner": 2,
+              "phase": 4,
+              "final": 0,
+              "consolation": 0
+            }
+          ]
+        }
+      ],
+      "players": [
+        
+      ]
+    },
+    {
+      "num": 999,
+      "round_count": 1,
+      "name": "Grupo C",
+      "rounds": [
+        {
+          "recap": false,
+          "phase": 5,
+          "match_count": 2,
+          "matches": [
+            {
+              "id": 44,
+              "group": 999,
+              "group_level": 4,
+              "game_num": 1,
+              "game_name": "Campe\u00e3o e Vice Campe\u00e3o ",
+              "previous_game": 42,
+              "has_winner": true,
+              "p1": {
+                "id": 10,
+                "name": "Matheus Arag\u00e3o",
+                "score": 2,
+                "points": 8
+              },
+              "p2": {
+                "id": 20,
+                "name": "Murilo Franco",
+                "score": 0,
+                "points": 6
+              },
+              "winner": 1,
+              "phase": 5,
+              "final": 1,
+              "consolation": 0
+            },
+            {
+              "id": 45,
+              "group": 999,
+              "group_level": 4,
+              "game_num": 2,
+              "game_name": "3\u00ba e 4\u00ba colocado ",
+              "previous_game": 38,
+              "has_winner": true,
+              "p1": {
+                "id": 18,
+                "name": "Mirela Rico",
+                "score": 0,
+                "points": 6
+              },
+              "p2": {
+                "id": 14,
+                "name": "Mariana Maia",
+                "score": 2,
+                "points": 6
+              },
+              "winner": 2,
+              "phase": 5,
+              "final": 1,
+              "consolation": 1
+            }
+          ]
+        }
+      ],
+      "players": [
+        
+      ]
+    }
+  ],
+  "players": [
+    {
+      "id": 1,
+      "group": 1,
+      "name": "Isadora Camacho",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_3\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 2,
+      "group": 2,
+      "name": "Gabriel Domingues",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_19\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 3,
+      "group": 1,
+      "name": "Lucas Esteves",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_12\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 4,
+      "group": 2,
+      "name": "Stephany Gusm\u00e3o",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_2\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 5,
+      "group": 1,
+      "name": "M\u00e1rcia Azevedo",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_9\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 6,
+      "group": 2,
+      "name": "Samanta Roque",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_7\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 7,
+      "group": 1,
+      "name": "Crist\u00f3v\u00e3o Queir\u00f3s",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_1\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 8,
+      "group": 1,
+      "name": "Joaquim de Souza",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_0\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 9,
+      "group": 1,
+      "name": "Daiana Aguiar",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_15\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 10,
+      "group": 1,
+      "name": "Matheus Arag\u00e3o",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_17\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 11,
+      "group": 2,
+      "name": "Ivan Jimenes",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_16\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 12,
+      "group": 2,
+      "name": "Kelly Mendon\u00e7a",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_10\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 13,
+      "group": 2,
+      "name": "Elias Delvalle",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_14\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 14,
+      "group": 2,
+      "name": "Mariana Maia",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_6\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 15,
+      "group": 1,
+      "name": "Nicole Soares",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_8\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 16,
+      "group": 1,
+      "name": "Pablo Espinoza",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_4\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 17,
+      "group": 2,
+      "name": "Eunice Galindo",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_5\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 18,
+      "group": 1,
+      "name": "Mirela Rico",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_11\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 19,
+      "group": 2,
+      "name": "Giovana Carmona",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_18\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    },
+    {
+      "id": 20,
+      "group": 2,
+      "name": "Murilo Franco",
+      "link": "http:\/\/localhost\/brasilsinuca\/u\/sampleuser_13\/",
+      "profile_image": "http:\/\/localhost\/brasilsinuca\/static\/img\/default_user.jpg?t=1748831497"
+    }
+  ]
 };
 
+    var jTournament = null;
 
-$(document).ready(function () {
-    $('#test').jTournament({
-			width: 100,
-			height: 30,
-			border_width: "1",
-			background_color: "#c0c0c0",
-			text_style: "bold 15px verdana",
-			h_spacing: 10,
-			v_spacing: 10,
-			text_color: "#FFFFFF",
-			text_color_loss: "#777777",
-			gradient: [{loc: 0, color: '#4F4F4F'},
-			   {loc: 0.5, color: '#1B1B1B'},
-			   {loc: 0.5, color: '#000000'}],
-			logo: {active: true},
-			score: {active: true},
-			links: {active: true},
-			url: ""  // Location of canvas background image with trailing slash!.
-    }, matchInfo);
-});
+    $(document).ready(function () {
+      jTournament = new TournamentBracket('brackets', {
+        width: 150,
+        height: 30,
+        border_width: "1",
+        background_color: "#c0c0c0",
+        text_style: "bold 15px verdana",
+        h_spacing: 10,
+        v_spacing: 10,
+        text_color: "#FFFFFF",
+        text_color_loss: "#777777",
+        gradient: [{ loc: 0, color: '#4F4F4F' },
+        { loc: 0.5, color: '#1B1B1B' },
+        { loc: 0.5, color: '#000000' }],
+        logo: { active: true },
+        score: { active: true },
+        links: { active: true },
+        url: ""  // Location of canvas background image with trailing slash!.
+      });
+      jTournament.setData(matchInfo);
+    });
+
+
   </script>
 </head>
+
 <body>
-<div>
-<canvas id="test"></canvas>
-</div>
+  <div style="position:relative; width: 100%; height: 100%;">
+    <canvas id="brackets"></canvas>
+  </div>
 </body>
+
 </html>
