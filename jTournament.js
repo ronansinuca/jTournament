@@ -1,15 +1,75 @@
 
+class Controls {
+	static move(controls) {
+		function mousePressed(e) {
+			controls.viewPos.isDragging = true;
+			controls.viewPos.prevX = e.clientX;
+			controls.viewPos.prevY = e.clientY;
+		}
+		function mouseDragged(e) {
+			const { prevX, prevY, isDragging } = controls.viewPos;
+			if (!isDragging) return;
+			const pos = { x: e.clientX, y: e.clientY };
+			const dx = pos.x - prevX;
+			const dy = pos.y - prevY;
+			if (prevX || prevY) {
+				controls.view.x += dx;
+				controls.view.y += dy;
+				controls.viewPos.prevX = pos.x, controls.viewPos.prevY = pos.y;
+				controls.display.render();
+			}
+		}
+		function mouseReleased(e) {
+			controls.viewPos.isDragging = false;
+			controls.viewPos.prevX = null;
+			controls.viewPos.prevY = null;
+			controls.display.render();
+		}
+		return {
+			mousePressed,
+			mouseDragged,
+			mouseReleased
+		};
+	}
+	static zoom(controls) {
+		function worldZoom(e) {
+			e.preventDefault();
+			let last_zoom = controls.view.zoom;
+			const { x, y, deltaY } = e;
+			const direction = deltaY > 0 ? -1 : 1;
+			const factor = controls.view.SCROLL_SENSITIVITY;
+			const zoom = 1 * direction * factor;
+			const wx = (x - controls.view.x) / (controls.view.width * controls.view.zoom);
+			const wy = (y - controls.view.y) / (controls.view.height * controls.view.zoom);
+
+			controls.view.zoom += zoom;
+			controls.view.zoom = Math.min(controls.view.zoom, controls.view.MAX_ZOOM);
+			controls.view.zoom = Math.max(controls.view.zoom, controls.view.MIN_ZOOM);
+
+			if (controls.view.zoom !== last_zoom) {
+				controls.view.x -= wx * controls.view.width * zoom;
+				controls.view.y -= wy * controls.view.height * zoom;
+			}
+			controls.display.render();
+		}
+		return { worldZoom };
+	}
+}
+
 TournamentBracket = class {
 	constructor(canvas_id, settings) {
 
 		//Default Options
 		var ds = {
+			debug: false,
 			data_url: '',
 			data_refresh_time: 10000,
 			width: 40,
 			height: 30,
 			v_spacing: 10,
 			h_spacing: 10,
+			phase_header: 30,
+			phase_header_text_color: "#fff",
 			padding: 10,
 			background_color: "#EDEDED",
 			border_color: "#000000",
@@ -19,18 +79,70 @@ TournamentBracket = class {
 			text_color: "#000000",
 			text_color_loss: "#666666",
 			text_style: "italic 11px verdana",
-			gradient: false,
-			header_gradient: [{ loc: 0, color: '#4F4F4F' },
-        { loc: 0.5, color: '#1B1B1B' },
-        { loc: 0.5, color: '#000000' }],
+
+
+			game_gradient: [
+				{ loc: 0, color: '#e8e8e8' },
+				//{ loc: 0.5, color: '#4cc775' },
+				{ loc: 0.5, color: '#a19d9d' }
+			],
+			game_color: "#e8e8e8",
+
+			game_winner_gradient: [
+				{ loc: 0, color: '#4cc775' },
+				//{ loc: 0.5, color: '#4cc775' },
+				{ loc: 0.5, color: '#034a1b' }
+			],
+			game_winner_color: "#fff",
+
+			game_looser_gradient: [
+				{ loc: 0, color: '#fa9d9d' },
+				//{ loc: 0.5, color: '#4cc775' },
+				{ loc: 0.5, color: '#c70c0c' }
+			],
+			game_looser_color: "#fa9d9d",
+
+			group_header_gradient: [
+				{ loc: 0, color: '#4F4F4F' },
+				{ loc: 0.5, color: '#1B1B1B' },
+				{ loc: 0.5, color: '#000000' }
+			],
+			group_header_color: "#fff",
+			phase_header_gradient: [
+				{ loc: 0, color: '#4F4F4F' },
+				{ loc: 0.5, color: '#1B1B1B' },
+				{ loc: 0.5, color: '#000000' }
+			],
+			phase_header_color: "#fff",
+			final_game_gradient: [
+				{ loc: 0, color: '#4cc775' },
+				//{ loc: 0.5, color: '#4cc775' },
+				{ loc: 0.5, color: '#034a1b' }
+			],
+			final_game_color: "#fab",
 			logo: { active: false, height: 30, width: 30, default_image: "default_logo.jpg", border: 1 },
-			score: { active: false, height: 30, width: 10, win_color: "#00FF00", loss_color: "#FF0000", neutral_color: "#0000FF", padding: 20 },
+			score: { active: false, height: 30, width: 30, win_color: "#fff", loss_color: "#fff", neutral_color: "#fff", padding: 20 },
 			links: { active: false },
 			url: ""
 		};
 
 		$.extend(true, ds, settings);
 		this.settings = ds;
+
+		this.controls = {/*from   www.demo2s.com*/
+			display: this,
+			view: {
+				x: 0,
+				y: 0,
+				zoom: 1,
+				width: 0,
+				height: 0,
+				MAX_ZOOM: 5,
+				MIN_ZOOM: 0.2,
+				SCROLL_SENSITIVITY: 0.05,
+			},
+			viewPos: { prevX: null, prevY: null, isDragging: false }
+		};
 
 		this.data = null;
 
@@ -48,9 +160,6 @@ TournamentBracket = class {
 			}
 		}
 
-
-		this.PADDING = 15;
-		this.GROUP_PADDING = 30;
 		this.HEADER_SIZE = 50;
 		//adjust canvas size to the right size.
 		this.x_adjustment = 0;
@@ -60,10 +169,10 @@ TournamentBracket = class {
 			this.x_adjustment += this.settings.logo.width;
 		}
 
-		console.log("Preparing the canvas for element " + canvas_id);
 		this.canvas = document.getElementById(canvas_id);
-		
-		this.backCanvas = [];
+		this.canvas.style.cursor = 'grab';
+
+		this.back_buffers = [];
 		//this.canvas.style.cursor = 'grab';
 
 		this.defaultPlayerImage = new Image();
@@ -80,11 +189,163 @@ TournamentBracket = class {
 		if (this.settings.data_url !== '') {
 			this.loadData();
 		}
+
+		this.bindActions();
+	}
+
+	bindActions = () => {
+		this.canvas.addEventListener('touchstart', this.touchStart.bind(this));
+		this.canvas.addEventListener('touchend', this.touchEnd.bind(this));
+		this.canvas.addEventListener('touchmove', this.touchMove.bind(this));
+
+		this.canvas.addEventListener('wheel', (e) => Controls.zoom(this.controls).worldZoom(e));
+		this.canvas.addEventListener('mousedown', (e) => Controls.move(this.controls).mousePressed(e));
+		this.canvas.addEventListener('mousemove', (e) => Controls.move(this.controls).mouseDragged(e));
+		this.canvas.addEventListener('mouseup', (e) => Controls.move(this.controls).mouseReleased(e));
+	}
+
+	setZoom = (val) => {
+		this.controls.view.zoom = val;
+		this.render();
+	}
+
+	setCamera = (x, y) => {
+		this.controls.view.x = -x;
+		this.controls.view.y = -y;
+		this.render();
+	}
+
+	resetView = () => {
+		this.controls.view.zoom = 1;
+		this.controls.view.x = 0;
+		this.controls.view.y = 0;
+		this.render();
+	}
+	// Gets the relevant location from a mouse or single touch event
+	getEventLocation = (e) => {
+		if (e.touches && e.touches.length == 1) {
+			return { x: e.touches[0].clientX, y: e.touches[0].clientY }
+		}
+		else if (e.clientX && e.clientY) {
+			return { x: e.clientX, y: e.clientY }
+		}
+	}
+
+
+	touchStart = (e) => {
+		e.preventDefault();
+		let location = this.getEventLocation(e);
+
+		this.panning = false;
+
+		this.zooming = false;
+
+		if (e.touches.length == 1) {
+
+			this.panning = true;
+
+			this.startX0 = e.touches[0].pageX;
+
+			this.startY0 = e.touches[0].pageY;
+		}
+
+		if (e.touches.length == 2) {
+
+			this.zooming = true;
+
+			this.startX0 = e.touches[0].pageX;
+
+			this.startY0 = e.touches[0].pageY;
+
+			this.startX1 = e.touches[1].pageX;
+
+			this.startY1 = e.touches[1].pageY;
+
+			this.centerPointStartX = ((this.startX0 + this.startX1) / 2.0);
+
+			this.centerPointStartY = ((this.startY0 + this.startY1) / 2.0);
+
+			this.percentageOfImageAtPinchPointX = (this.centerPointStartX - this.currentOffsetX) / this.currentWidth;
+
+			this.percentageOfImageAtPinchPointY = (this.centerPointStartY - this.currentOffsetY) / this.currentHeight;
+
+			this.startDistanceBetweenFingers = Math.sqrt(Math.pow((this.startX1 - this.startX0), 2) + Math.pow((this.startY1 - this.startY0), 2));
+
+		}
+
+		this.canvas.style.cursor = 'grabbing';
+	}
+
+	touchEnd = (e) => {
+		e.preventDefault();
+
+		if (this.panning) {
+			this.currentOffsetX = this.newOffsetX;
+			this.currentOffsetY = this.newOffsetY;
+		}
+		else if (this.zooming) {
+			this.currentOffsetX = this.newOffsetX;
+			this.currentOffsetY = this.newOffsetY;
+			this.currentContinuousZoom = this.newContinuousZoom;
+		}
+
+		this.zooming = false;
+		this.panning = false;
+
+		this.canvas.style.cursor = 'grab';
+		this.render();
+	}
+
+	touchMove = (e) => {
+		if (this.panning) {
+
+			this.endX0 = e.touches[0].pageX;
+
+			this.endY0 = e.touches[0].pageY;
+
+			this.translateFromTranslatingX = this.endX0 - this.startX0;
+
+			this.translateFromTranslatingY = this.endY0 - this.startY0;
+
+			this.newOffsetX = this.currentOffsetX + this.translateFromTranslatingX;
+
+			this.newOffsetY = this.currentOffsetY + this.translateFromTranslatingY;
+
+			this.controls.view.x = this.newOffsetX;
+			this.controls.view.y = this.newOffsetY;
+			//$("#debug_info").html('Panning...');	
+		}
+
+		else if (this.zooming) {
+			// Get the new touches
+			this.endX0 = e.touches[0].pageX;
+
+			this.endY0 = e.touches[0].pageY;
+
+			this.endX1 = e.touches[1].pageX;
+
+			this.endY1 = e.touches[1].pageY;
+
+			// Calculate current distance between points to get new-to-old pinch ratio and calc width and height
+
+			this.endDistanceBetweenFingers = Math.sqrt(Math.pow((this.endX1 - this.endX0), 2) + Math.pow((this.endY1 - this.endY0), 2));
+
+			this.pinchRatio = this.endDistanceBetweenFingers / this.startDistanceBetweenFingers;
+
+			this.newContinuousZoom = this.pinchRatio * this.currentContinuousZoom;
+			this.newContinuousZoom = Math.min(this.newContinuousZoom, this.controls.view.MAX_ZOOM)
+			this.newContinuousZoom = Math.max(this.newContinuousZoom, this.controls.view.MIN_ZOOM)
+
+			this.controls.view.zoom = this.newContinuousZoom;
+			//$("#debug_info").html('newContinuousZoom:  ' + this.newContinuousZoom + ' Zoom: ' + this.controls.view.zoom);	
+		}
+
+		this.render();
 	}
 
 	//function for making gradients in_var is the top
 	//positition of the element you are filling
-	makegrad = (ctx, in_var, gradient, height) => {
+	makegrad = (ctx, in_var, gradient, background_color, height) => {
 		if (gradient) {
 			var gradient2 = ctx.createLinearGradient(0, in_var, 0, in_var + height);
 			for (var k = 0; k < gradient.length; k++) {
@@ -94,7 +355,7 @@ TournamentBracket = class {
 			return (gradient2);
 		} else {
 			//otherwise return fill if no gradient is needed
-			return (this.settings.background_color);
+			return (background_color);
 		}
 	}
 
@@ -104,23 +365,20 @@ TournamentBracket = class {
 		for (j = 0; j < this.data.players.length; j++) {
 			this.data.players[j].image = new Image();
 			this.data.players[j].image.onload = function () {
-				//console.log("Image loaded ", this.j, this.last_player);
-				if(this.j == this.last_player) {
-					console.log('Images Loaded');
+				if (this.j == this.last_player) {
 					this.manager.render();
 				}
 			}
-			//console.log(this.data.players[j].profile_image);
 			this.data.players[j].image.src = this.data.players[j].profile_image;
 			this.data.players[j].image.manager = this;
 			this.data.players[j].image.j = j;
-			this.data.players[j].image.last_player =this.data.players.length - 1;
+			this.data.players[j].image.last_player = this.data.players.length - 1;
 		}
 	}
 
 	getPlayerById = (id) => {
 		for (var j = 0; j < this.data.players.length; j++) {
-			if(this.data.players[j].id == id)
+			if (this.data.players[j].id == id)
 				return this.data.players[j];
 		}
 		return null;
@@ -132,11 +390,9 @@ TournamentBracket = class {
 		} else {
 			this.data = data;
 		}
-		console.log(this.data);
 
 		this.loadImages();
 		this.setupGroups();
-		this.ajustSize();
 		this.render();
 	}
 
@@ -144,13 +400,11 @@ TournamentBracket = class {
 		if (this.settings.data_url == '') return;
 
 		var self = this;
-		//console.log('Load Data: ' + this.settings.data_url);
 		$.ajax({
 
 			'url': this.settings.data_url,
 			'type': 'GET',
 			'success': function (data) {
-				//console.warn(data);
 				self.setData(data);
 
 				if (self.settings.data_refresh_time > 0 && self.data.finished == false) {
@@ -164,246 +418,454 @@ TournamentBracket = class {
 	}
 
 	setupGroups = () => {
-		for(var j = 0; j < this.data.players.length; j++) {
+		for (var j = 0; j < this.data.players.length; j++) {
 			let player = this.data.players[j];
-			if (typeof this.data.groups[player.group-1].players === undefined) {
+			if (typeof this.data.groups[player.group - 1].players === undefined) {
 				this.data.groups[player.group].players = [];
 			}
-			this.data.groups[player.group-1].players.push(player)	;
+			this.data.groups[player.group - 1].players.push(player);
 		}
 
-		const A = 0;
-		const B = 1;
-		const C = 2;
-		const D = 3;
-
-		var groups = this.data.groups.length;
-		if(this.data.finished){
-			groups = groups -1;
-		}
-
-		var offsets = this.setupOffsets();
-
-		this.backCanvas = [];
+		this.back_buffers = [];
 		for (var i = 0; i < this.data.groups.length; i++) {
 			this.data.groups[i].index = i;
-			this.data.groups[i].width = this.getGroupWidth(i);
-			this.data.groups[i].height = this.getGroupHeight(i);
-			this.data.groups[i].final_width = this.settings.padding * 2; 
-			this.data.groups[i].final_height =  + this.settings.padding * 2; 
+			this.data.groups[i].width = 0;
+			this.data.groups[i].height = 0;
+			this.data.groups[i].final = false;
+			this.data.groups[i].render = false;
+			this.data.groups[i].flip = (i == 1) || (i == 3);
 
-			if(i < groups)
-				this.data.groups[i].offsets = offsets[i];
+			this.calculateGroupSize(this.data.groups[i]);
 
-			var backCanvas = document.createElement('canvas');
-			backCanvas.width = this.data.groups[i].width;
-			backCanvas.height = this.data.groups[i].height;
-			this.backCanvas.push(backCanvas);
-			console.log(backCanvas);
+			var back_buffers = document.createElement('canvas');
+			back_buffers.width = this.data.groups[i].width;
+			back_buffers.height = this.data.groups[i].height;
+			this.back_buffers.push(back_buffers);
 		}
-
 	}
 
-	ajustSize = () => {
-
-		var total_width = 0;
-		var total_height = 0;
-		var i;
-		for (i = 0; i < this.data.groups.length; i++) {
-			total_width = Math.max(total_width, this.data.groups[i].width);
-			total_height += this.data.groups[i].height + this.settings.v_spacing;
+	getFinalRoundGroupWidth = () => {
+		if (this.data.groups[this.data.groups.length-1].rounds.length > 0) {
+			return this.settings.width + 50;
 		}
-		
-		console.log('Canvas Width: ', total_width);
-		console.log('Canvas Height: ', total_height);
-		$(this.canvas).attr('height', total_height);
-		$(this.canvas).attr('width', total_width);
+		return this.settings.h_spacing;
 	}
 
-	getGroupWithMaxMatches = (group_index) => {
-		var ret = 0;
-		for (var i = 0; i < this.data.groups[group_index].matches.length; i++) {
-			if(this.data.groups[group_index].matches[i].rounds.length > ret)
-				ret = this.data.groups[group_index].matches[i].rounds.length;
-		}
-		return ret;
+	getFinalRoundGroupItemHeight = () => {
+		return (this.settings.height * 2.5);
 	}
 
-	getGroupHeight = (group_index) => {
-		var group = this.data.groups[group_index];
-		var height = group.players.length * (this.settings.height + this.settings.v_spacing);
-		
-		/*if(group_index < this.data.groups.length - 1)
-		{
-			height = group.players.length * (this.settings.height + this.settings.v_spacing);
-		}*/
-		return height * 3;
-	}
-
-	getGroupWidth = (group_index) => {
-		var rounds = this.data.groups[group_index].rounds.length;
-		return (rounds * (this.settings.width + this.x_adjustment + this.settings.h_spacing)) + this.settings.width + this.x_adjustment;
+	getFinalRoundGroupHeight = () => {
+		return (this.getFinalRoundGroupItemHeight() * 2) + this.settings.v_spacing + (this.settings.height * 4) + (this.settings.v_spacing * 4);
 	}
 
 	render = () => {
-		if(this.rendering) return;
+		if (this.rendering || this.data == null) return;
 
-		console.log('Rendering');
 		this.rendering = true;
 
-		this.ctx.fillStyle = "#fff";
-		//ctx.fillStyle = "#0000FFFF";
-		this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-		this.ctx.save();
-
-		var groups = this.data.groups.length;
-		if(this.data.finished){
-			groups = groups -1;
-		}
-
-		for (var i = 0; i < groups; i++) {
-
+		for (var i = 0; i < this.data.groups.length - 1; i++) {
 			var group = this.data.groups[i];
-			this.renderGroup(group);
-
-			//this.ctx.drawImage(this.backCanvas[group.index], group.dx, group.dy);
+			this.renderGroup(group, group.flip, false);
 		}
 
-		if(this.data.finished){
-			this.renderFinal();
-		}
+		this.renderFinal();
 
 		this.drawBuffers();
 		this.rendering = false;
+
+		// render debug
+		if (this.settings.debug)
+		{
+			this.ctx.font = "bold 30px verdana";
+			let debug = 'Zoom: ' + this.controls.view.zoom.toFixed(2) + ' Camera Offset: ' + this.controls.view.x.toFixed(2) + ', ' + this.controls.view.y.toFixed(2);
+			this.ctx.fillStyle = '#0006';
+			this.ctx.fillRect(0, 0, this.ctx.canvas.width, 50);
+			this.ctx.fillStyle = '#fff';
+			this.ctx.fillText(debug, 10, 30);
+		}
 	}
 
-	setupOffsets = () => {
+	defineGroupsCords = () => {
 
 		const A = 0;
 		const B = 1;
 		const C = 2;
 		const D = 3;
 
-		var groups = this.data.groups.length;
+		var group_count = this.data.groups.length;
+		var final_spacing = this.getFinalRoundGroupWidth();
 
-		var final_spacing = this.settings.h_spacing;
-		if(this.data.finished){
-			groups = groups -1;
-			final_spacing = this.settings.width + (this.settings.h_spacing * 2);
+		for (var i = 0; i < group_count - 1; i++) {
+			var group = this.data.groups[i];
+
+			group.dx = 0;
+			group.dy = 0;
+
+			// goup a, b and final group
+			if(group_count == 3) {
+				if(i == 1){
+					group.dx = this.data.groups[A].width + final_spacing /*+ this.settings.h_spacing*/;
+				}
+			} /*else {
+				group.dx = this.data.groups[A].width + final_spacing;
+			}*/
 		}
 
-		var offsets = [];
-
-		if(groups == 2){
-			this.canvas.width = this.data.groups[A].final_width + this.data.groups[B].final_width + final_spacing + (this.PADDING *2);
-
-			// this.canvas.height = Math.max(this.data.groups[A].final_height, this.data.groups[B].final_height) + this.HEADER_SIZE + (this.PADDING *2);
-			this.canvas.height = this.data.groups[A].final_height + this.data.groups[B].final_height + (this.HEADER_SIZE * groups) + (this.PADDING *2) + this.settings.padding;
-
-			offsets = [
-				{flip: false, x: 0, y:0}, 
-				//{flip: false, x: this.data.groups[A].final_width + final_spacing, y: 0}
-				{flip: false, x: 0, y: this.data.groups[A].final_height + this.settings.padding + this.HEADER_SIZE }
-			];
-		} else
-
-		if(groups == 4){
-			this.canvas.width = this.data.groups[A].final_width + this.data.groups[C].final_width + final_spacing + (this.PADDING *2);
-
-			let max_1 = Math.max(this.data.groups[A].final_height, this.data.groups[B].final_height);
-			let max_2 = Math.max(this.data.groups[C].final_height, this.data.groups[D].final_height);
-			this.canvas.height = Math.max(max_1, max_2) + this.GROUP_PADDING + (this.HEADER_SIZE * 2) + (this.PADDING *2);
-
-			offsets = [
-				{flip: false, x: 0, y:0}, 
-				//{flip: false, x: this.data.groups[A].final_width + final_spacing, y: 0}
-				{flip: false, x: 0, y: this.data.groups[A].final_height + this.settings.padding + this.HEADER_SIZE },
-				{flip: false, x: 0, y: this.data.groups[B].final_height + this.settings.padding + this.HEADER_SIZE },
-				{flip: false, x: 0, y: this.data.groups[C].final_height + this.settings.padding + this.HEADER_SIZE },
-			];
-		} else { // 1 group only
-			this.canvas.width = this.data.groups[A].final_width + final_spacing + (this.PADDING *2);
-			this.canvas.height = this.data.groups[A].final_height + this.HEADER_SIZE + (this.PADDING *2);
-		}
-
-		return offsets;
+		//if(group_count == 3) {
+			this.data.groups[group_count - 1].dx = this.data.groups[A].width;
+			let max = Math.max(this.data.groups[A].height, this.data.groups[B].height);
+			this.data.groups[group_count - 1].dy = ((max / 2) + this.HEADER_SIZE + 10) - (this.getFinalRoundGroupItemHeight() / 2);	
+		/*} else {
+			this.data.groups[group_count - 1].dx = this.data.groups[A].width;
+			let max = Math.max(this.data.groups[A].height, this.data.groups[B].height);
+			this.data.groups[group_count - 1].dy = ((max / 2) + this.HEADER_SIZE) - (this.data.groups[group_count - 1].height / 2);	
+		}*/
 	}
 
 	drawBuffers = () => {
-		var groups = this.data.groups.length;
 
-		var final_spacing = this.settings.h_spacing;
-		if(this.data.finished){
-			groups = groups -1;
-			final_spacing = this.settings.width + (this.settings.h_spacing * 2);
-		}
+		this.defineGroupsCords();
 
-		var offsets = this.setupOffsets();
-console.log(offsets);
-		for (var i = 0; i < groups; i++) {
+		const A = 0;
+		const B = 1;
+		const C = 2;
+		const D = 3;
+
+		var final_spacing = this.getFinalRoundGroupWidth();
+
+		this.canvas.width = this.data.groups[A].width + this.data.groups[B].width + final_spacing + (this.settings.padding * 2) + this.settings.h_spacing;
+		this.canvas.height = Math.max(this.data.groups[A].height, this.data.groups[B].height) + (this.settings.padding * 2) + this.HEADER_SIZE + 10;
+
+		this.controls.view.width = this.canvas.width;
+		this.controls.view.height = this.canvas.height;
+
+		this.ctx.fillStyle = this.settings.background_color;
+		this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		
+		this.ctx.save();
+
+		this.ctx.translate(this.controls.view.x, this.controls.view.y);
+		this.ctx.scale(this.controls.view.zoom, this.controls.view.zoom);
+
+		for (var i = 0; i < this.data.groups.length; i++) {
 			var group = this.data.groups[i];
-			var canavas = this.backCanvas[group.index];
-			// console.log(group);
-			if(canavas.height > 0) {
-				var dx = offsets[i].x + this.PADDING;
-				var dy = offsets[i].y + this.PADDING;
+			if(!group.render) continue;
 
-				this.ctx.fillStyle = this.makegrad(this.ctx, dy, this.settings.header_gradient, this.HEADER_SIZE);
-				this.ctx.fillRect(dx, dy, group.final_width, this.HEADER_SIZE);
+			var canvas = this.back_buffers[i];
+			if (canvas.height <= 0) continue;
+
+			var dx = group.dx + this.settings.padding;
+			var dy = group.dy + this.settings.padding;
+
+			if(!group.final && this.data.groups.length > 2) {
+				this.ctx.fillStyle = this.makegrad(this.ctx, dy, this.settings.group_header_gradient, this.settings.group_header_color, this.HEADER_SIZE);
+				this.ctx.fillRect(dx, dy, canvas.width, this.HEADER_SIZE);
 
 				//this.ctx.textBaseline = 'top';
 				this.ctx.fillStyle = this.settings.text_color;
 				this.ctx.font = "italic 22px verdana";
-				this.ctx.fillText(group.name, dx + this.PADDING, dy + ((this.HEADER_SIZE / 2) ));
-
-				dy +=  + this.HEADER_SIZE;
-
-				this.ctx.strokeRect(dx, dy, group.final_width, group.final_height);
-
-				console.log(dx, dy)
-				
-				this.ctx.save();
-				//this.ctx.drawImage(this.backCanvas[group.index], group.dx, group.dy);
-				if(group.offsets.flip) {
-					this.ctx.scale(-1, 1);
-					this.ctx.drawImage(canavas, 0, 0, group.final_width, group.final_height, -group.final_width, dy, -dx, group.final_height);
-				} else {
-					this.ctx.drawImage(canavas, 0, 0, group.final_width, group.final_height, dx, dy, group.final_width, group.final_height);
-				}
-				this.ctx.restore();
+				this.ctx.textBaseline = 'middle';
+				this.ctx.fillText(group.name, dx + 10, dy + ((this.HEADER_SIZE / 2)));
+				dy += this.HEADER_SIZE + 10;
 			}
+			
+			this.ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, dx, dy, canvas.width, canvas.height);
+			//this.ctx.strokeRect(dx, dy, canvas.width, canvas.height + this.HEADER_SIZE)		;
 		}
+		this.ctx.restore();
+		this.ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
 	}
 
 	renderFinal = () => {
-		var canvas = this.backCanvas[this.backCanvas.length-1];
+		/*if (!this.data.finished) {
+			return;
+		}*/
+
+
+		var finished_colors = [
+			"#da0",
+			"#ccc",
+			"#963",
+			"#678"
+		];
+
+		var group_width = this.getFinalRoundGroupWidth();// this.settings.width + 50 + (this.settings.h_spacing);
+		var item_height = this.getFinalRoundGroupItemHeight();
+
+		var canvas = this.back_buffers[this.data.groups.length - 1];
+		canvas.width = this.getFinalRoundGroupWidth();
+		canvas.height = this.getFinalRoundGroupHeight();
+	
 		var ctx = canvas.getContext('2d');
+		ctx.fillStyle = this.settings.background_color;
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+		var group = this.data.groups[this.data.groups.length - 1];
+		if(group.rounds.length <= 0) return;
+
+		group.render = true;
+
+		group.final = true;
+		var draw_x = 0;
+		var draw_y = 0;
+
+		ctx.fillStyle = this.settings.game_winner_color;
+		ctx.strokeStyle = this.settings.border_color; // red
+		ctx.lineWidth = this.settings.border_width;
+		ctx.font = this.settings.text_style;
+		ctx.textBaseline = 'top';
+
+		// FINAL GAME >>>>
+		ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.final_game_gradient, this.settings.final_game_color, item_height);
+		ctx.fillRect(0, 0, canvas.width, item_height);
+		ctx.strokeRect(0, 0, canvas.width, item_height);
+
+		ctx.fillStyle = this.settings.text_color;
+		ctx.textBaseline = 'middle';
+		ctx.textAlign = 'center';
+		ctx.fillText(group.rounds[0].matches[0].game_name, canvas.width / 2, draw_y + (item_height / 2));
+		ctx.textBaseline = 'top';
+		ctx.textAlign = 'left';
+		ctx.textBaseline = 'middle';
+
+		// Player 1 Image
+		let player1 = this.getPlayerById(group.rounds[0].matches[0].p1.id);
+		ctx.drawImage(player1.image, 0, 0, this.settings.logo.width, this.settings.logo.height);
+		ctx.strokeRect(0, 0, this.settings.logo.width, this.settings.logo.height);
+
+		// Player 2 Image
+		let player2 = this.getPlayerById(group.rounds[0].matches[0].p2.id);
+		ctx.drawImage(player2.image, 0, item_height - this.settings.logo.height, this.settings.logo.width, this.settings.logo.height);
+		ctx.strokeRect(0, item_height - this.settings.logo.height, this.settings.logo.width, this.settings.logo.height);
+
+		var name_offset = 5;
+		// draw Player name
+		var text_x_pos = this.settings.logo.width + name_offset;
+
+		ctx.fillStyle = this.settings.text_color;
+		if (group.rounds[0].matches[0].winner == 2) {
+			//ctx.fillStyle = this.settings.text_color_loss; 
+		}
+		ctx.fillText(group.rounds[0].matches[0].p1.name, text_x_pos, draw_y + (this.settings.height / 2));
+
+		ctx.fillStyle = this.settings.text_color;
+		if (group.rounds[0].matches[0].winner == 1) {
+			//ctx.fillStyle = this.settings.text_color_loss;
+		}
+		ctx.fillText(group.rounds[0].matches[0].p2.name, text_x_pos, draw_y + item_height - (this.settings.height / 2));
+
+		text_x_pos = ((canvas.width) - (this.settings.score.width / 2));
+
+		ctx.textAlign = 'center';
+
+		// Player 1 Score
+		if (group.rounds[0].matches[0].winner == 1) {
+			ctx.fillStyle = this.settings.score.win_color;
+		} else {
+			ctx.fillStyle = this.settings.score.loss_color;
+		}
+		ctx.fillText(group.rounds[0].matches[0].p1.score, text_x_pos, draw_y + (this.settings.height / 2));
+
+		// Player 2 Score
+		if (group.rounds[0].matches[0].winner == 2) {
+			ctx.fillStyle = this.settings.score.win_color;
+		} else {
+			ctx.fillStyle = this.settings.score.loss_color;
+		}
+		ctx.fillText(group.rounds[0].matches[0].p2.score, text_x_pos, (draw_y + item_height) - (this.settings.height / 2));
+		// FINAL GAME <<<<
+
+		draw_x = 0;
+		draw_y = item_height + this.settings.v_spacing;
+		ctx.fillStyle = this.settings.game_winner_color;
+		ctx.strokeStyle = this.settings.border_color; // red
+		ctx.lineWidth = this.settings.border_width;
+		ctx.font = this.settings.text_style;
+		ctx.textBaseline = 'top';
+
+		// CONSOLATION GAME >>>>
+		ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.final_game_gradient, this.settings.final_game_color, item_height);
+		ctx.fillRect(0, draw_y, canvas.width, item_height);
+		ctx.strokeRect(0, draw_y, canvas.width, item_height);
+
+		ctx.fillStyle = this.settings.text_color;
+
+		ctx.textBaseline = 'middle';
+		ctx.textAlign = 'center';
+		ctx.fillText(group.rounds[0].matches[1].game_name, canvas.width / 2, draw_y + (item_height / 2));
+		ctx.textBaseline = 'top';
+		ctx.textAlign = 'left';
+
+		// Player 1 Image
+		player1 = this.getPlayerById(group.rounds[0].matches[1].p1.id);
+		ctx.drawImage(player1.image, 0, draw_y, this.settings.logo.width, this.settings.logo.height);
+		ctx.strokeRect(0, draw_y, this.settings.logo.width, this.settings.logo.height);
+
+		// Player 2 Image
+		player2 = this.getPlayerById(group.rounds[0].matches[1].p2.id);
+		ctx.drawImage(player2.image, 0, (draw_y + item_height) - this.settings.logo.height, this.settings.logo.width, this.settings.logo.height);
+		ctx.strokeRect(0, (draw_y + item_height) - this.settings.logo.height, this.settings.logo.width, this.settings.logo.height);
+		
+		// draw Player name
+		var text_x_pos = this.settings.logo.width + name_offset;
+		ctx.textBaseline = 'middle';
+
+		ctx.fillStyle = this.settings.text_color;
+		if (group.rounds[0].matches[1].winner == 2) {
+			//ctx.fillStyle = this.settings.text_color_loss;
+		}
+		ctx.fillText(group.rounds[0].matches[1].p1.name, text_x_pos, draw_y + (this.settings.height / 2));
+
+		ctx.fillStyle = this.settings.text_color;
+		if (group.rounds[0].matches[0].winner == 1) {
+			//ctx.fillStyle = this.settings.text_color_loss;
+		}
+		ctx.fillText(group.rounds[0].matches[1].p2.name, text_x_pos, draw_y + item_height - (this.settings.height / 2));
+
+		text_x_pos = ((canvas.width) - (this.settings.score.width / 2));
+		ctx.textBaseline = 'middle';
+		ctx.textAlign = 'center';
+		// Player 1 Score
+		if (group.rounds[0].matches[1].winner == 1) {
+			ctx.fillStyle = this.settings.score.win_color;
+		} else {
+			ctx.fillStyle = this.settings.score.loss_color;
+		}
+		ctx.fillText(group.rounds[0].matches[1].p1.score, text_x_pos, draw_y + (this.settings.height / 2));
+
+		// Player 2 Score
+		if (group.rounds[0].matches[1].winner == 2) {
+			ctx.fillStyle = this.settings.score.win_color;
+		} else {
+			ctx.fillStyle = this.settings.score.loss_color;
+		}
+		ctx.fillText(group.rounds[0].matches[1].p2.score, text_x_pos, (draw_y + item_height) - (this.settings.height / 2));
+		// CONSOLATION GAME <<<<
+
+		if(group.rounds[0].matches[0].winner == 0 || group.rounds[0].matches[1].winner == 0) return;
+
+		draw_y += item_height + this.settings.v_spacing;
+
+		var names = [];
+
+		if (group.rounds[0].matches[0].winner == 1) {
+			names.push(group.rounds[0].matches[0].p1.name);
+			names.push(group.rounds[0].matches[0].p2.name);
+		} else {
+			names.push(group.rounds[0].matches[0].p2.name);
+			names.push(group.rounds[0].matches[0].p1.name);
+		}
+
+		if (group.rounds[0].matches[1].winner == 1) {
+			names.push(group.rounds[0].matches[1].p1.name);
+			names.push(group.rounds[0].matches[1].p2.name);
+		} else {
+			names.push(group.rounds[0].matches[1].p2.name);
+			names.push(group.rounds[0].matches[1].p1.name);
+		}
+		var balloon_xpos = this.settings.width + 20;
+		var balloon_height = this.settings.height;
+		var balloon_width = 30;
+
+		ctx.textAlign = 'left';
+
+		for(var i = 0; i < names.length; i++){
+			
+			ctx.fillStyle = finished_colors[i];// this.makegrad(ctx, draw_y, this.settings.final_game_gradient, this.settings.final_game_color, this.settings.height);
+			ctx.fillRect(0, draw_y, this.settings.width, this.settings.height);
+			ctx.strokeRect(0, draw_y, this.settings.width, this.settings.height);
+
+			let temp = i + 1;
+			ctx.textBaseline = 'middle';
+			ctx.fillStyle = '#000';
+			ctx.fillText(/*temp + '\u00ba '  + */names[i], 5, draw_y + (this.settings.height / 2));
+
+			this.drawHintBalloon(ctx, balloon_xpos, draw_y, balloon_width, balloon_height, temp + '\u00ba ', finished_colors[i]);
+
+			draw_y += this.settings.height + this.settings.v_spacing;
+		}		
 	}
 
-	renderGroup = (group) => {
-		var logo_store = [];
-		var ctx = this.backCanvas[group.index].getContext('2d');
+	drawHintBalloon = (ctx, x, y, width, height, text, color/*, radius = 0*/) => {
+		const radius = 0;
+		const pointerSize = 10;
+
+		// Posição da ponta do triângulo (seta) — à esquerda, no meio da altura
+		const pointerX = x - pointerSize;
+		const pointerY = y + height / 2;
+
+		ctx.save();
+		ctx.beginPath();
+
+		// Começa no topo esquerdo (após a seta)
+		ctx.moveTo(x + radius, y);
+		ctx.lineTo(x + width - radius, y);
+		ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+		ctx.lineTo(x + width, y + height - radius);
+		ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+		ctx.lineTo(x + radius, y + height);
+		ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+		ctx.lineTo(x, pointerY + pointerSize / 2);
+
+		// Triângulo (seta)
+		ctx.lineTo(pointerX, pointerY);
+		ctx.lineTo(x, pointerY - pointerSize / 2);
+
+		ctx.lineTo(x, y + radius);
+		ctx.quadraticCurveTo(x, y, x + radius, y);
+
+		ctx.closePath();
+
+		// Estilos
+		ctx.fillStyle = color || "#fff";
+		ctx.strokeStyle = "#333";
+		ctx.lineWidth = 1;
+		ctx.fill();
+		ctx.stroke();
+
+		// Texto
+		ctx.fillStyle = "#000";
+		ctx.font = "18px sans-serif";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(text, x + width / 2, y + height / 2);
+
+		ctx.restore();
+	}
+
+	calculateGroupsSize = () => {
+		for (var g = 0; g < this.data.groups.length; g++) {
+			var group = this.data.groups[g];
+			this.calculateGroupSize(this.data.groups[g]);
+		}
+	}
+
+	calculateGroupSize = (group) => {
+		this.renderGroup(group, false, true);
+	}
+
+	renderGroup = (group, flip, sizes_only) => {
+
+		var ctx = null;
+		if (!sizes_only) {
+			ctx = this.back_buffers[group.index].getContext('2d');
+
+			ctx.fillStyle = this.settings.background_color;
+			ctx.fillRect(0, 0, group.width, group.height);
+		}
 
 		var half_height = (this.settings.height / 2);
 		var colors = ['#f00', '#0f0'];
-		//ctx.strokeStyle = colors[group.index];
-		//ctx.strokeRect(1, 1, group.width-1, group.height-1);
 
 		// i = rounds, j = players in matches in that round
 		for (var i = 0; i < group.rounds.length; i++) {
-			//console.log("Group", i);
+			var round_name_rendered = false;
 			for (var j = 0; j < (group.rounds[i].matches.length * 2); j++) {
-				//console.log("Round", j);
-				//set up general defaults accoring to settings
-				ctx.fillStyle = this.settings.background_color;
-				ctx.strokeStyle = this.settings.border_color; // red
-				ctx.lineWidth = this.settings.border_width;
-				ctx.font = this.settings.text_style;
-				ctx.textBaseline = 'top';
 				//general formular is (((2^i)*(j+1))+(1-(2^i))) I broke it down for my own sanitity.
 				var c = (Math.pow(2, (i)));
 				var n = j + 1;
-				var yloc = (c * n) + (1 - c);
+				var yloc = (c * n) + (1 - c); /*(this.settings.h_spacing * 2) + */
 				var yloc_next = ((Math.pow(2, (i + 1))) * (Math.ceil((j + 1) / 2))) + (1 - (Math.pow(2, (i + 1))));
 				var ygap = ((c * (n + 1)) + (1 - c)) - yloc;
 				var yadj = ygap / 2;
@@ -412,69 +874,160 @@ console.log(offsets);
 				var prot_y = this.settings.height + this.settings.v_spacing;
 				var prot_x = this.settings.width + this.settings.h_spacing;
 
-				if (this.settings.logo.active) {
-					//prot_x += this.settings.logo.width;
-				}
-
 				var dx = (i * prot_x);
 
-				var draw_x = (dx + this.settings.padding);
-				var draw_y = ((yloc * prot_y) + (yadj * prot_y) - (prot_y * 1.5)) + this.settings.padding;
-
-
-				if(draw_y +this.settings.height > group.final_height)
-				{
-					group.final_height = draw_y +this.settings.height + (this.settings.padding);
+				var draw_x = (dx);
+				if (flip) {
+					draw_x = group.width - (dx) - this.settings.width;
 				}
-				if(draw_x +this.settings.width > group.final_width)
-				{
-					group.final_width = draw_x +this.settings.width + (this.settings.padding);
+
+				var draw_y = ((yloc * prot_y) + (yadj * prot_y) - (prot_y * 1.5)) + this.settings.phase_header;
+
+
+				if (draw_y + this.settings.height > group.height) {
+					group.height = draw_y + this.settings.height;
+				}
+				if (draw_x + this.settings.width > group.width) {
+					group.width = draw_x + this.settings.width + this.settings.h_spacing;
+				}
+
+				if (sizes_only) {
+					group.height += 10;
+					continue;
+				}
+
+				group.render = true;
+				//set up general defaults accoring to settings
+				ctx.fillStyle = this.settings.game_winner_color;
+				ctx.strokeStyle = this.settings.border_color; // red
+				ctx.lineWidth = this.settings.border_width;
+				ctx.font = this.settings.text_style;
+				ctx.textBaseline = 'top';
+
+				if (!round_name_rendered) {
+					round_name_rendered = true;
+					ctx.fillStyle = this.makegrad(ctx, 1, this.settings.phase_header_gradient, this.settings.phase_header_color, this.settings.phase_header);
+					ctx.fillRect(draw_x+1, 1, this.settings.width, this.settings.phase_header - 2);
+					ctx.strokeRect(draw_x+1, 1, this.settings.width, this.settings.phase_header - 2);
+
+					ctx.textAlign = 'center';
+					ctx.textBaseline = 'middle';
+					ctx.fillStyle = this.settings.phase_header_text_color;
+					let name = group.rounds[i].phase_name;
+					if(name == undefined) name = 'Fase ' + group.rounds[i].phase;
+					ctx.fillText(name, draw_x + (this.settings.width / 2), (this.settings.phase_header / 2));
+					
+				}
+				ctx.textBaseline = 'top';
+
+				draw_y += 10;
+
+				var looser_game = false;
+				var winner_game = false;
+				var extra_match = false;
+
+				if (Math.floor(j / 2) == (j / 2)) {
+					if (group.rounds[i].matches[(j / 2)].p1 != null) {
+						//...and the match has been played...
+						if (group.rounds[i].matches[(j / 2)].winner != null) {
+							//...and this poor fella has lost...
+							if (group.rounds[i].matches[(j / 2)].winner == 2) {
+								looser_game = true;
+							} else {
+								winner_game = true;
+							}
+						}
+					}
+					extra_match = group.rounds[i].matches[(j / 2)].extra_match;
+				} else {
+					if (group.rounds[i].matches[Math.floor(j / 2)].p2 != null) {
+						if (group.rounds[i].matches[Math.floor(j / 2)].winner != null) {
+							if (group.rounds[i].matches[Math.floor(j / 2)].winner == 1) {
+								looser_game = true;
+							} else {
+								winner_game = true;
+							}
+						}
+					}
+					extra_match = group.rounds[i].matches[Math.floor(j / 2)].extra_match;
 				}
 
 				//This is a mess... will tidy later (vaguely tidied now)
-				ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.gradient, this.settings.height);
+				if(looser_game)
+					ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.game_looser_gradient, this.settings.game_looser_color, this.settings.height);
+				else if(winner_game) 
+					ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.game_winner_gradient, this.settings.game_winner_color, this.settings.height);
+				else {
+					if(extra_match)
+						ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.game_winner_gradient, this.settings.game_winner_color, this.settings.height);
+					else ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.game_gradient, this.settings.game_color, this.settings.height);
+				}
+
+				{ //draw them brakets
+					//set bracket options
+					ctx.strokeStyle = this.settings.bracket_color;
+					ctx.lineWidth = this.settings.bracket_width;
+
+					if ((i < group.rounds.length - 1) || this.data.finished)
+					{
+						
+						ctx.beginPath();
+						if (flip) {
+							let offset = group.width;
+							//move to right middle of element just dawn
+							ctx.moveTo((offset - (dx + this.settings.width)), draw_y + half_height);
+
+							// draw horizontal line to 1/2 of h_spacing
+							ctx.lineTo((offset - (dx + this.settings.width + (this.settings.h_spacing / 2))), draw_y + half_height);
+
+							//draw vertical line to y of the middle of the next element
+							ctx.lineTo((offset - (dx + this.settings.width + (this.settings.h_spacing / 2))), ((yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5) + half_height + this.settings.phase_header + 10));
+
+							//draw horizontal to next element
+							ctx.lineTo((offset - ((dx + prot_x) + (this.settings.width / 2))), (yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5) + half_height + this.settings.phase_header + 10);
+						} else {
+							//move to right middle of element just dawn
+							ctx.moveTo(((dx + this.settings.width)), draw_y + half_height);
+
+							// draw horizontal line to 1/2 of h_spacing
+							ctx.lineTo(((dx + this.settings.width + (this.settings.h_spacing / 2))), draw_y + half_height);
+
+							//draw vertical line to y of the middle of the next element
+							ctx.lineTo(((dx + this.settings.width + (this.settings.h_spacing / 2))), ((yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5) + half_height + this.settings.phase_header) + 10);
+
+							//draw horizontal to next element
+							ctx.lineTo(((dx + prot_x)) + (this.settings.width / 2), (yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5) + half_height + this.settings.phase_header + 10);
+						}
+						ctx.stroke();
+					}
+				}
 				ctx.fillRect(draw_x, draw_y, this.settings.width, this.settings.height);
 				ctx.strokeRect(draw_x, draw_y, this.settings.width, this.settings.height);
 
 				//draw logo if active
-				if (this.settings.logo.active) {
-					logo_store[j] = {};
-					logo_store[j].func = new Image();
-					logo_store[j].func.settings = this.settings.logo;
-					logo_store[j].func.onload = function () {
-						ctx.drawImage(this, this.xpos, this.ypos, this.settings.width, this.settings.height)
-						if (this.settings.border > 0) {
-							ctx.strokeRect(this.xpos + 1, this.ypos, this.settings.width - 1, this.settings.height);
-						}
+				if (this.settings.logo.active) {				
+					var x_pos = draw_x;
+					if (flip) {
+						x_pos = (draw_x + this.settings.width) - this.settings.logo.width;
 					}
-					logo_store[j].func.xpos = draw_x;
-					logo_store[j].func.ypos = draw_y;
-					logo_store[j].func.j = j;
-
 					if (Math.floor(j / 2) == (j / 2)) {
 						if (group.rounds[i].matches[(j / 2)].p1 != null /*&& group.rounds[i].matches[(j / 2)].p1.logo != null*/) {
 							let player = this.getPlayerById(group.rounds[i].matches[(j / 2)].p1.id);
-							if(player){
-
-								//console.log('draw p1 image');
-								//console.log(player.image);
-								ctx.drawImage(player.image, draw_x, draw_y, this.settings.logo.width, this.settings.logo.height);
-							}else ctx.drawImage(this.defaultPlayerImage, draw_x, draw_y, this.settings.logo.width, this.settings.logo.height);
+							if (player) {
+								ctx.drawImage(player.image, x_pos, draw_y, this.settings.logo.width, this.settings.logo.height);
+							} else ctx.drawImage(this.defaultPlayerImage, x_pos, draw_y, this.settings.logo.width, this.settings.logo.height);
 						} else {
-							logo_store[j].func.src = this.settings.logo.default_image;
+							ctx.drawImage(this.defaultPlayerImage, x_pos, draw_y, this.settings.logo.width, this.settings.logo.height);
 						}
 					} else {
 						if (group.rounds[i].matches[Math.floor(j / 2)].p2 != null /*&& group.rounds[i].matches[Math.floor(j / 2)].p2.logo != null*/) {
-							//logo_store[j].func.src = group.rounds[i].matches[Math.floor(j / 2)].p2.logo;
-
 							let player = this.getPlayerById(group.rounds[i].matches[Math.floor(j / 2)].p2.id);
 
-							if(player) {
-								//console.log('draw p2 image');
-								ctx.drawImage(player.image, draw_x, draw_y, this.settings.logo.width, this.settings.logo.height);
-							}else ctx.drawImage(this.defaultPlayerImage, draw_x, draw_y, this.settings.logo.width, this.settings.logo.height);
+							if (player) {
+								ctx.drawImage(player.image, x_pos, draw_y, this.settings.logo.width, this.settings.logo.height);
+							} else ctx.drawImage(this.defaultPlayerImage, x_pos, draw_y, this.settings.logo.width, this.settings.logo.height);
 						} else {
-							logo_store[j].func.src = this.settings.logo.default_image;
+							ctx.drawImage(this.defaultPlayerImage, x_pos, draw_y, this.settings.logo.width, this.settings.logo.height);
 						}
 					}
 					if (this.settings.logo.border > 0) {
@@ -484,7 +1037,18 @@ console.log(offsets);
 
 				//writescore if active
 				if (this.settings.score.active) {
+					var x_pos = ((draw_x + this.settings.width) - this.settings.score.width);
+					var text_x_pos = ((draw_x + this.settings.width) - (this.settings.score.width / 2));
 
+					if (flip) {
+						x_pos = draw_x;
+						text_x_pos = draw_x + (this.settings.score.width / 2);
+					}
+
+					ctx.fillRect(x_pos, draw_y, this.settings.score.width - 1, this.settings.height);
+
+					ctx.textAlign = 'center';
+					ctx.textBaseline = 'middle';
 					ctx.fillStyle = this.settings.score.neutral_color;
 					if (Math.floor(j / 2) == (j / 2)) {
 						if (group.rounds[i].matches[(j / 2)].p1 != null && group.rounds[i].matches[(j / 2)].p1.score != null) {
@@ -495,7 +1059,7 @@ console.log(offsets);
 									ctx.fillStyle = this.settings.score.loss_color;
 								}
 							}
-							ctx.fillText(group.rounds[i].matches[(j / 2)].p1.score, (draw_x + this.settings.width - this.settings.score.padding), draw_y + (half_height - 8));
+							ctx.fillText(group.rounds[i].matches[(j / 2)].p1.score, text_x_pos, draw_y + (half_height));
 						}
 					} else {
 						if (group.rounds[i].matches[Math.floor(j / 2)].p2 != null && group.rounds[i].matches[Math.floor(j / 2)].p2.score != null) {
@@ -506,129 +1070,56 @@ console.log(offsets);
 									ctx.fillStyle = this.settings.score.loss_color;
 								}
 							}
-							ctx.fillText(group.rounds[i].matches[Math.floor(j / 2)].p2.score, (draw_x + this.settings.width - this.settings.score.padding), draw_y + (half_height - 8));
+							ctx.fillText(group.rounds[i].matches[Math.floor(j / 2)].p2.score, text_x_pos, draw_y + (half_height));
 						}
 					}
 					ctx.fillStyle = this.settings.text_color;
 				}
+				ctx.textBaseline = 'top';
 
 				//draw border if needed
 				if (this.settings.border_width > 0) {
 					ctx.strokeRect(draw_x, draw_y, this.settings.width, this.settings.height);
 				}
 
-				//if last round draw winner cell
-				if (i == (group.rounds.length - 1) && false) {
-					if (this.settings.logo.active) {
-
-						logo_store[j + 1] = {};
-						logo_store[j + 1].func = new Image();
-						logo_store[j + 1].func.settings = this.settings.logo;
-						logo_store[j + 1].func.onload = function () {
-							ctx.drawImage(this, this.xpos, this.ypos)
-							if (this.settings.border > 0) {
-								ctx.strokeRect(this.xpos + 1, this.ypos, this.settings.width - 1, this.settings.height);
-							}
-						}
-						logo_store[j + 1].func.xpos = (((i + 1) * prot_x));
-						logo_store[j + 1].func.ypos = (yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5);
-
-
-						if (group.rounds[i].matches[0].winner == 1) {
-							logo_store[j + 1].func.src = group.rounds[i].matches[0].p1.logo;
-						} else if (group.rounds[i].matches[0].winner == 2) {
-							logo_store[j + 1].func.src = group.rounds[i].matches[0].p2.logo;
-						} else {
-							logo_store[j + 1].func.src = this.settings.logo.default_image;
-						}
-
-					}
-					ctx.fillStyle = this.makegrad(ctx, (yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5), this.settings.gradient, this.settings.height);
-					ctx.fillRect((((i + 1) * prot_x) + this.x_adjustment), (yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5), this.settings.width, this.settings.height);
-					//draw border if needed
-					if (this.settings.border_width > 0) {
-						ctx.strokeRect((((i + 1) * prot_x) + this.x_adjustment), (yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5), this.settings.width, this.settings.height);
-					}
-					if (group.rounds[i].matches[0].winner == 1) {
-						ctx.fillStyle = this.settings.text_color;
-						ctx.fillText(group.rounds[i].matches[0].p1.name, ((((i + 1) * prot_x) + 5) + this.x_adjustment), (yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5) + (half_height - 8));
-					}
-					if (group.rounds[i].matches[0].winner == 2) {
-						ctx.fillStyle = this.settings.text_color;
-						ctx.fillText(group.rounds[i].matches[0].p2.name, ((((i + 1) * prot_x) + 5) + this.x_adjustment), (yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5) + (half_height - 8));
-					}
-				}
-
-				
-				//set bracket options
-				ctx.strokeStyle = this.settings.bracket_color;
-				ctx.lineWidth = this.settings.bracket_width;
-
-				if(i < group.rounds.length - 1) 
-				{
-					//draw them brakets
-					ctx.beginPath();
-
-					//move to right middle of element just dawn
-					ctx.moveTo(((dx + this.settings.width) + this.settings.padding), draw_y + half_height);
-
-					// draw horizontal line to 1/2 of h_spacing
-					ctx.lineTo(((dx + this.settings.width + (this.settings.h_spacing / 2)) + this.settings.padding), draw_y + half_height);
-
-					//draw vertical line to y of the middle of the next element
-					ctx.lineTo(((dx + this.settings.width + (this.settings.h_spacing / 2)) + this.settings.padding), ((yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5) + half_height + this.settings.padding));
-
-					//draw horizontal to next element
-					ctx.lineTo(((dx + prot_x) + this.settings.padding), (yloc_next * prot_y) + (yadj_next * prot_y) - (prot_y * 1.5) + half_height + this.settings.padding);
-					ctx.stroke();
-				}
-
 				//reset strokes in case you have different borders
 				ctx.strokeStyle = this.settings.border_color;
 				ctx.lineWidth = this.settings.border_width;
 
+
+				ctx.textAlign = 'left';
+				var name_x = draw_x + 5;
+				if(this.settings.logo.active){
+					name_x += this.settings.logo.width;
+				}
+
+				ctx.textBaseline = 'middle';
+				//...set fill style to text color...
+				ctx.fillStyle = this.settings.text_color;
 				//evens or odds I could use mods I think but I'm only a simple bear
 				if (Math.floor(j / 2) == (j / 2)) {
-
 					//if player has a name...
 					if (group.rounds[i].matches[(j / 2)].p1 != null) {
-
-						//...set fill style to text color...
-						ctx.fillStyle = this.settings.text_color;
-
 						//...and the match has been played...
 						if (group.rounds[i].matches[(j / 2)].winner != null) {
-
 							//...and this poor fella has lost...
 							if (group.rounds[i].matches[(j / 2)].winner == 2) {
-
 								//...set the fill style to looser color...
-								ctx.fillStyle = this.settings.text_color_loss;
+								//ctx.fillStyle = this.settings.text_color_loss;
 							}
 						}
-
-						let name = group.rounds[i].matches[(j / 2)].p1.name;
-						if(group.offsets.flip)
-							name = name.split('').reverse().join('');
 						//...then write the NAME!
-						ctx.fillText(name, ((draw_x + 5) + this.x_adjustment), draw_y + (half_height - 8));
+						ctx.fillText(group.rounds[i].matches[(j / 2)].p1.name, name_x, draw_y + (half_height));
 					}
 				} else {
-
 					//do the same thing for again for player two
 					if (group.rounds[i].matches[Math.floor(j / 2)].p2 != null) {
-						ctx.fillStyle = this.settings.text_color;
 						if (group.rounds[i].matches[Math.floor(j / 2)].winner != null) {
 							if (group.rounds[i].matches[Math.floor(j / 2)].winner == 1) {
-								ctx.fillStyle = this.settings.text_color_loss;
+								//ctx.fillStyle = this.settings.text_color_loss;
 							}
 						}
-						let name = group.rounds[i].matches[Math.floor(j / 2)].p2.name;
-						if(group.offsets.flip)
-							name = name.split('').reverse().join('');
-						ctx.fillText(name, ((draw_x + 5) + this.x_adjustment), draw_y + (half_height - 8));
-
-
+						ctx.fillText(group.rounds[i].matches[Math.floor(j / 2)].p2.name, name_x, draw_y + (half_height));
 					}
 				}
 			}
