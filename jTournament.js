@@ -58,12 +58,15 @@ class Controls {
 	}
 }
 
+const BRACKET_RADIUS = 5;
+
 TournamentBracket = class {
 	constructor(canvas_id, settings) {
 
 		//Default Options
 		var ds = {
 			debug: false,
+			rounded: true,
 			data_url: '',
 			data_refresh_time: 10000,
 			width: 40,
@@ -123,7 +126,7 @@ TournamentBracket = class {
 			],
 			final_game_color: "#fab",
 			logo: { active: false, height: 30, width: 30, default_image: "default_logo.jpg", border: 1 },
-			score: { active: false, height: 30, width: 30, win_color: "#fff", loss_color: "#fff", neutral_color: "#fff", padding: 20 },
+			score: { active: false, height: 30, width: 30, background_color: "#f00", win_color: "#fff", loss_color: "#fff", neutral_color: "#fff", padding: 20, border: 1 },
 			links: { active: false },
 			url: ""
 		};
@@ -148,7 +151,7 @@ TournamentBracket = class {
 
 		this.zooming = false;
 		this.panning = false;
-		
+
 		this.startX0 = 0;
 		this.startY0 = 0;
 		this.startX1 = 0;
@@ -218,6 +221,7 @@ TournamentBracket = class {
 			this.loadData();
 		}
 
+		this.buildActionButtons();
 		this.bindActions();
 	}
 
@@ -249,6 +253,50 @@ TournamentBracket = class {
 		this.controls.view.y = 0;
 		this.render();
 	}
+
+	clickHandler = (e) => {
+		let action = $(e.target).data('action');
+		if (action == 'reset-view') {
+			this.resetView();
+		} else
+			if (action == 'view') {
+				$(".tbv-tool-button").css('border-bottom', '0px solid red');
+				$(e.target).css('border-bottom', '2px solid red');
+				let view = $(e.target).data('view');
+				if (view == 'null') {
+					this.setDisplayPhase(null);
+				} else {
+					this.setDisplayPhase(view);
+				}
+			}
+
+		//console.warn('Button clicked', action);
+	}
+
+	buildActionButtons = () => {
+		if (this.tools) {
+			return;
+		}
+		let parent = $(this.canvas).parent();
+		parent.find('div').first().remove();
+		let html = '<div class="text-left tournament-tool-bar"><button data-action="reset-view" class="tbv-tool-button btn btn-sm btn-success"><i class="fa fa-eye-slash"></i></button>&nbsp;';
+		/*if (this.data.rounds.length > 0) {
+			html += '<button data-action="view" data-view="null"  class="tbv-tool-button btn btn-sm btn-warning" style="border-bottom:2px solid red;"><i class="fa fa-eye"></i> Todas</button>&nbsp;';
+			for (var i = 0; i < this.data.rounds.length; i++) {
+				html += '<button data-action="view" data-view="' + i + '" class="tbv-tool-button btn btn-sm btn-success"><i class="fa fa-eye"></i> Fase ' + (i + 1) + '</button>&nbsp;';
+			}
+		}*/
+
+		html += '</div>';
+		parent.prepend(html);
+
+		if (this.settings.debug)
+			parent.prepend('<p id="debug_info"></p>');
+
+		$('.tbv-tool-button ').click(this.clickHandler.bind(this));
+		this.tools = true;
+	}
+
 	// Gets the relevant location from a mouse or single touch event
 	getEventLocation = (e) => {
 		if (e.touches && e.touches.length == 1) {
@@ -258,7 +306,6 @@ TournamentBracket = class {
 			return { x: e.clientX, y: e.clientY }
 		}
 	}
-
 
 	touchStart = (e) => {
 		e.preventDefault();
@@ -472,7 +519,7 @@ TournamentBracket = class {
 	}
 
 	getFinalRoundGroupWidth = () => {
-		if (this.data.groups[this.data.groups.length-1].rounds.length > 0) {
+		if (this.data.groups[this.data.groups.length - 1].rounds.length > 0) {
 			return this.settings.width + 50;
 		}
 		return this.settings.h_spacing;
@@ -483,7 +530,90 @@ TournamentBracket = class {
 	}
 
 	getFinalRoundGroupHeight = () => {
-		return (this.getFinalRoundGroupItemHeight() * 2) + this.settings.v_spacing + (this.settings.height * 4) + (this.settings.v_spacing * 4);
+		return (this.getFinalRoundGroupItemHeight() * 2) + this.settings.v_spacing + (this.settings.height * 4) + (this.settings.v_spacing * 6);
+	}
+
+	/**
+	 * Draws a rounded rectangle using the current state of the canvas.
+	 * If you omit the last three params, it will draw a rectangle
+	 * outline with a 5 pixel border radius
+	 * @param {CanvasRenderingContext2D} ctx
+	 * @param {Number} x The top left x coordinate
+	 * @param {Number} y The top left y coordinate
+	 * @param {Number} width The width of the rectangle
+	 * @param {Number} height The height of the rectangle
+	 * @param {Number} [radius = 5] The corner radius; It can also be an object 
+	 *                 to specify different radii for corners
+	 * @param {Number} [radius.tl = 0] Top left
+	 * @param {Number} [radius.tr = 0] Top right
+	 * @param {Number} [radius.br = 0] Bottom right
+	 * @param {Number} [radius.bl = 0] Bottom left
+	 * @param {Boolean} [fill = true] Whether to fill the rectangle.
+	 * @param {Boolean} [stroke = false] Whether to stroke the rectangle.
+	 */
+	roundRect = (
+		ctx,
+		x,
+		y,
+		width,
+		height,
+		radius = 5,
+		fill = true,
+		stroke = false
+	) => {
+		if (typeof radius === 'number') {
+			radius = { tl: radius, tr: radius, br: radius, bl: radius };
+		} else {
+			radius = { ...{ tl: 0, tr: 0, br: 0, bl: 0 }, ...radius };
+		}
+		ctx.beginPath();
+		ctx.moveTo(x + radius.tl, y);
+		ctx.lineTo(x + width - radius.tr, y);
+		ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
+		ctx.lineTo(x + width, y + height - radius.br);
+		ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
+		ctx.lineTo(x + radius.bl, y + height);
+		ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
+		ctx.lineTo(x, y + radius.tl);
+		ctx.quadraticCurveTo(x, y, x + radius.tl, y);
+		ctx.closePath();
+		if (fill) {
+			ctx.fill();
+		}
+		if (stroke) {
+			ctx.stroke();
+		}
+	}
+
+	/**
+	 * Draws a rounded rectangle using the current state of the canvas.
+	 * If you omit the last three params, it will draw a rectangle
+	 * outline with a 5 pixel border radius
+	 * @param {CanvasRenderingContext2D} ctx
+	 * @param {Number} x The top left x coordinate
+	 * @param {Number} y The top left y coordinate
+	 * @param {Number} width The width of the rectangle
+	 * @param {Number} height The height of the rectangle
+	 * @param {Number} [radius = 5] The corner radius; It can also be an object 
+	 *                 to specify different radii for corners
+	 * @param {Boolean} [fill = true] Whether to fill the rectangle.
+	 * @param {Boolean} [stroke = false] Whether to stroke the rectangle.
+	 */
+	rectangle = (
+		ctx,
+		x,
+		y,
+		width,
+		height,
+		fill = true,
+		stroke = false
+	) => {
+		if (fill) {
+			ctx.fillRect(x, y, width, height);
+		}
+		if (stroke) {
+			ctx.strokeRect(x, y, width, height);
+		}
 	}
 
 	render = () => {
@@ -502,8 +632,7 @@ TournamentBracket = class {
 		this.rendering = false;
 
 		// render debug
-		if (this.settings.debug)
-		{
+		if (this.settings.debug) {
 			this.ctx.font = "bold 30px verdana";
 			let debug = 'Zoom: ' + this.controls.view.zoom.toFixed(2) + ' Camera Offset: ' + this.controls.view.x.toFixed(2) + ', ' + this.controls.view.y.toFixed(2);
 			this.ctx.fillStyle = '#0006';
@@ -530,8 +659,8 @@ TournamentBracket = class {
 			group.dy = 0;
 
 			// goup a, b and final group
-			if(group_count == 3) {
-				if(i == 1){
+			if (group_count == 3) {
+				if (i == 1) {
 					group.dx = this.data.groups[A].width + final_spacing /*+ this.settings.h_spacing*/;
 				}
 			} /*else {
@@ -540,9 +669,9 @@ TournamentBracket = class {
 		}
 
 		//if(group_count == 3) {
-			this.data.groups[group_count - 1].dx = this.data.groups[A].width;
-			let max = Math.max(this.data.groups[A].height, this.data.groups[B].height);
-			this.data.groups[group_count - 1].dy = ((max / 2) + this.HEADER_SIZE + 10) - (this.getFinalRoundGroupItemHeight() / 2);	
+		this.data.groups[group_count - 1].dx = this.data.groups[A].width;
+		let max = Math.max(this.data.groups[A].height, this.data.groups[B].height);
+		this.data.groups[group_count - 1].dy = ((max / 2) + this.HEADER_SIZE + 10) - (this.getFinalRoundGroupItemHeight() / 2);
 		/*} else {
 			this.data.groups[group_count - 1].dx = this.data.groups[A].width;
 			let max = Math.max(this.data.groups[A].height, this.data.groups[B].height);
@@ -569,7 +698,7 @@ TournamentBracket = class {
 
 		this.ctx.fillStyle = this.settings.background_color;
 		this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-		
+
 		this.ctx.save();
 
 		this.ctx.translate(this.controls.view.x, this.controls.view.y);
@@ -577,7 +706,7 @@ TournamentBracket = class {
 
 		for (var i = 0; i < this.data.groups.length; i++) {
 			var group = this.data.groups[i];
-			if(!group.render) continue;
+			if (!group.render) continue;
 
 			var canvas = this.back_buffers[i];
 			if (canvas.height <= 0) continue;
@@ -585,9 +714,12 @@ TournamentBracket = class {
 			var dx = group.dx + this.settings.padding;
 			var dy = group.dy + this.settings.padding;
 
-			if(!group.final && this.data.groups.length > 2) {
+			if (!group.final && this.data.groups.length > 2) {
 				this.ctx.fillStyle = this.makegrad(this.ctx, dy, this.settings.group_header_gradient, this.settings.group_header_color, this.HEADER_SIZE);
-				this.ctx.fillRect(dx, dy, canvas.width, this.HEADER_SIZE);
+				//this.ctx.fillRect(dx, dy, canvas.width, this.HEADER_SIZE);
+
+
+				this.renderRect(this.ctx, dx, dy, canvas.width, this.HEADER_SIZE, true, false);
 
 				//this.ctx.textBaseline = 'top';
 				this.ctx.fillStyle = this.settings.text_color;
@@ -596,7 +728,7 @@ TournamentBracket = class {
 				this.ctx.fillText(group.name, dx + 10, dy + ((this.HEADER_SIZE / 2)));
 				dy += this.HEADER_SIZE + 10;
 			}
-			
+
 			this.ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, dx, dy, canvas.width, canvas.height);
 			//this.ctx.strokeRect(dx, dy, canvas.width, canvas.height + this.HEADER_SIZE)		;
 		}
@@ -605,11 +737,6 @@ TournamentBracket = class {
 	}
 
 	renderFinal = () => {
-		/*if (!this.data.finished) {
-			return;
-		}*/
-
-
 		var finished_colors = [
 			"#da0",
 			"#ccc",
@@ -623,13 +750,13 @@ TournamentBracket = class {
 		var canvas = this.back_buffers[this.data.groups.length - 1];
 		canvas.width = this.getFinalRoundGroupWidth();
 		canvas.height = this.getFinalRoundGroupHeight();
-	
+
 		var ctx = canvas.getContext('2d');
 		ctx.fillStyle = this.settings.background_color;
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 		var group = this.data.groups[this.data.groups.length - 1];
-		if(group.rounds.length <= 0) return;
+		if (group.rounds.length <= 0) return;
 
 		group.render = true;
 
@@ -645,8 +772,11 @@ TournamentBracket = class {
 
 		// FINAL GAME >>>>
 		ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.final_game_gradient, this.settings.final_game_color, item_height);
-		ctx.fillRect(0, 0, canvas.width, item_height);
-		ctx.strokeRect(0, 0, canvas.width, item_height);
+
+		this.renderRect(ctx, 0, 0, canvas.width, item_height, true, true);
+		ctx.save();
+		this.renderRect(ctx, 0, 0, canvas.width, item_height, false, false);
+		ctx.clip();
 
 		ctx.fillStyle = this.settings.text_color;
 		ctx.textBaseline = 'middle';
@@ -701,6 +831,7 @@ TournamentBracket = class {
 			ctx.fillStyle = this.settings.score.loss_color;
 		}
 		ctx.fillText(group.rounds[0].matches[0].p2.score, text_x_pos, (draw_y + item_height) - (this.settings.height / 2));
+		ctx.restore();
 		// FINAL GAME <<<<
 
 		draw_x = 0;
@@ -713,8 +844,11 @@ TournamentBracket = class {
 
 		// CONSOLATION GAME >>>>
 		ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.final_game_gradient, this.settings.final_game_color, item_height);
-		ctx.fillRect(0, draw_y, canvas.width, item_height);
-		ctx.strokeRect(0, draw_y, canvas.width, item_height);
+
+		this.renderRect(ctx, 0, draw_y, canvas.width, item_height, true, true);
+		ctx.save();
+		this.renderRect(ctx, 0, draw_y, canvas.width, item_height, false, false);
+		ctx.clip();
 
 		ctx.fillStyle = this.settings.text_color;
 
@@ -733,7 +867,7 @@ TournamentBracket = class {
 		player2 = this.getPlayerById(group.rounds[0].matches[1].p2.id);
 		ctx.drawImage(player2.image, 0, (draw_y + item_height) - this.settings.logo.height, this.settings.logo.width, this.settings.logo.height);
 		ctx.strokeRect(0, (draw_y + item_height) - this.settings.logo.height, this.settings.logo.width, this.settings.logo.height);
-		
+
 		// draw Player name
 		var text_x_pos = this.settings.logo.width + name_offset;
 		ctx.textBaseline = 'middle';
@@ -768,11 +902,13 @@ TournamentBracket = class {
 			ctx.fillStyle = this.settings.score.loss_color;
 		}
 		ctx.fillText(group.rounds[0].matches[1].p2.score, text_x_pos, (draw_y + item_height) - (this.settings.height / 2));
+		ctx.restore();
+
 		// CONSOLATION GAME <<<<
 
-		if(group.rounds[0].matches[0].winner == 0 || group.rounds[0].matches[1].winner == 0) return;
+		if (group.rounds[0].matches[0].winner == 0 || group.rounds[0].matches[1].winner == 0) return;
 
-		draw_y += item_height + this.settings.v_spacing;
+		draw_y += item_height + (this.settings.v_spacing * 3);
 
 		var names = [];
 
@@ -797,16 +933,11 @@ TournamentBracket = class {
 
 		ctx.textAlign = 'left';
 
-		for(var i = 0; i < names.length; i++){
-			
-			ctx.fillStyle = finished_colors[i];// this.makegrad(ctx, draw_y, this.settings.final_game_gradient, this.settings.final_game_color, this.settings.height);
-			//ctx.fillRect(0, draw_y, this.settings.width, this.settings.height);
-			//ctx.strokeRect(0, draw_y, this.settings.width, this.settings.height);
-			ctx.beginPath();
-			ctx.roundRect(0, draw_y, this.settings.width, this.settings.height, 10);
-			ctx.fill();
-			ctx.stroke();
+		for (var i = 0; i < names.length; i++) {
 
+			ctx.fillStyle = finished_colors[i];// this.makegrad(ctx, draw_y, this.settings.final_game_gradient, this.settings.final_game_color, this.settings.height);
+			//this.renderRect(ctx, 0, draw_y, this.settings.width, this.settings.height, true, true);
+			this.renderRect(ctx, 0, draw_y, canvas.width, this.settings.height, true, true);
 
 			let temp = i + 1;
 			ctx.textBaseline = 'middle';
@@ -816,11 +947,11 @@ TournamentBracket = class {
 			this.drawHintBalloon(ctx, balloon_xpos, draw_y, balloon_width, balloon_height, temp + '\u00ba ', finished_colors[i]);
 
 			draw_y += this.settings.height + this.settings.v_spacing;
-		}		
+		}
 	}
 
 	drawHintBalloon = (ctx, x, y, width, height, text, color/*, radius = 0*/) => {
-		const radius = 0;
+		const radius = this.settings.rounded ? BRACKET_RADIUS : 0;
 		const pointerSize = 10;
 
 		// Posição da ponta do triângulo (seta) — à esquerda, no meio da altura
@@ -875,6 +1006,22 @@ TournamentBracket = class {
 
 	calculateGroupSize = (group) => {
 		this.renderGroup(group, false, true);
+	}
+
+	renderRect = (
+		ctx,
+		x,
+		y,
+		width,
+		height,
+		fill = true,
+		stroke = false
+	) => {
+		if (this.settings.rounded) {
+			this.roundRect(ctx, x, y, width, height, BRACKET_RADIUS, fill, stroke);
+		} else {
+			this.rectangle(ctx, x, y, width, height, fill, stroke);
+		}
 	}
 
 	renderGroup = (group, flip, sizes_only) => {
@@ -939,16 +1086,15 @@ TournamentBracket = class {
 				if (!round_name_rendered) {
 					round_name_rendered = true;
 					ctx.fillStyle = this.makegrad(ctx, 1, this.settings.phase_header_gradient, this.settings.phase_header_color, this.settings.phase_header);
-					ctx.fillRect(draw_x+1, 1, this.settings.width, this.settings.phase_header - 2);
-					ctx.strokeRect(draw_x+1, 1, this.settings.width, this.settings.phase_header - 2);
+					this.renderRect(ctx, draw_x + 1, 1, this.settings.width, this.settings.phase_header - 2);
 
 					ctx.textAlign = 'center';
 					ctx.textBaseline = 'middle';
 					ctx.fillStyle = this.settings.phase_header_text_color;
 					let name = group.rounds[i].phase_name;
-					if(name == undefined) name = 'Fase ' + group.rounds[i].phase;
+					if (name == undefined) name = 'Fase ' + group.rounds[i].phase;
 					ctx.fillText(name, draw_x + (this.settings.width / 2), (this.settings.phase_header / 2));
-					
+
 				}
 				ctx.textBaseline = 'top';
 
@@ -985,12 +1131,12 @@ TournamentBracket = class {
 				}
 
 				//This is a mess... will tidy later (vaguely tidied now)
-				if(looser_game)
+				if (looser_game)
 					ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.game_looser_gradient, this.settings.game_looser_color, this.settings.height);
-				else if(winner_game) 
+				else if (winner_game)
 					ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.game_winner_gradient, this.settings.game_winner_color, this.settings.height);
 				else {
-					if(extra_match)
+					if (extra_match)
 						ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.game_winner_gradient, this.settings.game_winner_color, this.settings.height);
 					else ctx.fillStyle = this.makegrad(ctx, draw_y, this.settings.game_gradient, this.settings.game_color, this.settings.height);
 				}
@@ -1000,9 +1146,8 @@ TournamentBracket = class {
 					ctx.strokeStyle = this.settings.bracket_color;
 					ctx.lineWidth = this.settings.bracket_width;
 
-					if ((i < group.rounds.length - 1) || this.data.finished)
-					{
-						
+					if ((i < group.rounds.length - 1) || this.data.finished) {
+
 						ctx.beginPath();
 						if (flip) {
 							let offset = group.width;
@@ -1033,15 +1178,20 @@ TournamentBracket = class {
 						ctx.stroke();
 					}
 				}
-				ctx.fillRect(draw_x, draw_y, this.settings.width, this.settings.height);
-				ctx.strokeRect(draw_x, draw_y, this.settings.width, this.settings.height);
+
+				// render item background
+				this.renderRect(ctx, draw_x, draw_y, this.settings.width, this.settings.height, true, false);
+				ctx.save();
+				this.renderRect(ctx, draw_x, draw_y, this.settings.width, this.settings.height, false, false);
+				ctx.clip();
 
 				//draw logo if active
-				if (this.settings.logo.active) {				
+				if (this.settings.logo.active) {
 					var x_pos = draw_x;
 					if (flip) {
 						x_pos = (draw_x + this.settings.width) - this.settings.logo.width;
 					}
+
 					if (Math.floor(j / 2) == (j / 2)) {
 						if (group.rounds[i].matches[(j / 2)].p1 != null /*&& group.rounds[i].matches[(j / 2)].p1.logo != null*/) {
 							let player = this.getPlayerById(group.rounds[i].matches[(j / 2)].p1.id);
@@ -1063,9 +1213,13 @@ TournamentBracket = class {
 						}
 					}
 					if (this.settings.logo.border > 0) {
-						ctx.strokeRect(draw_x + 1, draw_y, this.settings.width - 1, this.settings.height);
+						ctx.beginPath();
+						ctx.moveTo(draw_x + this.settings.logo.width, draw_y);
+						ctx.lineTo(draw_x + this.settings.logo.width, draw_y + this.settings.logo.height);
+						ctx.stroke();
 					}
 				}
+
 
 				//writescore if active
 				if (this.settings.score.active) {
@@ -1077,7 +1231,10 @@ TournamentBracket = class {
 						text_x_pos = draw_x + (this.settings.score.width / 2);
 					}
 
-					ctx.fillRect(x_pos, draw_y, this.settings.score.width - 1, this.settings.height);
+					if(this.settings.score.background_color) {
+						ctx.fillStyle = this.settings.score.backgound_color;
+						ctx.fillRect(x_pos, draw_y, this.settings.score.width - 1, this.settings.height);
+					}
 
 					ctx.textAlign = 'center';
 					ctx.textBaseline = 'middle';
@@ -1105,13 +1262,23 @@ TournamentBracket = class {
 							ctx.fillText(group.rounds[i].matches[Math.floor(j / 2)].p2.score, text_x_pos, draw_y + (half_height));
 						}
 					}
+					if (this.settings.score.border > 0) {
+						ctx.beginPath();
+						ctx.moveTo((draw_x + this.settings.width) - this.settings.score.width, draw_y);
+						ctx.lineTo((draw_x + this.settings.width) -  this.settings.score.width, draw_y + this.settings.score.height);
+						ctx.stroke();
+					}
+
 					ctx.fillStyle = this.settings.text_color;
 				}
+
+				ctx.restore();
+
 				ctx.textBaseline = 'top';
 
 				//draw border if needed
 				if (this.settings.border_width > 0) {
-					ctx.strokeRect(draw_x, draw_y, this.settings.width, this.settings.height);
+					this.renderRect(ctx, draw_x, draw_y, this.settings.width, this.settings.height, false, true);
 				}
 
 				//reset strokes in case you have different borders
@@ -1121,7 +1288,7 @@ TournamentBracket = class {
 
 				ctx.textAlign = 'left';
 				var name_x = draw_x + 5;
-				if(this.settings.logo.active){
+				if (this.settings.logo.active) {
 					name_x += this.settings.logo.width;
 				}
 
