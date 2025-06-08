@@ -5,6 +5,7 @@ class Controls {
 			controls.viewPos.isDragging = true;
 			controls.viewPos.prevX = e.clientX;
 			controls.viewPos.prevY = e.clientY;
+			controls.display.canvas.style.cursor = 'grabbing';
 		}
 		function mouseDragged(e) {
 			const { prevX, prevY, isDragging } = controls.viewPos;
@@ -23,6 +24,7 @@ class Controls {
 			controls.viewPos.isDragging = false;
 			controls.viewPos.prevX = null;
 			controls.viewPos.prevY = null;
+			controls.display.canvas.style.cursor = 'default';
 			controls.display.render();
 		}
 		return {
@@ -78,7 +80,7 @@ TournamentBracket = class {
 			bracket_width: "2",
 			text_color: "#000000",
 			text_color_loss: "#666666",
-			text_style: "italic 11px verdana",
+			text_style: "bold 11px verdana",
 
 
 			game_gradient: [
@@ -144,6 +146,32 @@ TournamentBracket = class {
 			viewPos: { prevX: null, prevY: null, isDragging: false }
 		};
 
+		this.zooming = false;
+		this.panning = false;
+		
+		this.startX0 = 0;
+		this.startY0 = 0;
+		this.startX1 = 0;
+		this.startY1 = 0;
+
+		this.endX0 = 0;
+		this.endY0 = 0;
+		this.translateFromTranslatingX = 0;
+		this.translateFromTranslatingY = 0;
+		this.newOffsetX = 0;
+		this.newOffsetY = 0;
+
+		this.currentOffsetX = 0;
+		this.currentOffsetY = 0;
+
+		this.endDistanceBetweenFingers = 0;
+
+		this.pinchRatio = 0;
+
+		this.newContinuousZoom = 0;
+		this.newContinuousZoom = 0;
+		this.newContinuousZoom = 0;
+
 		this.data = null;
 
 
@@ -170,7 +198,7 @@ TournamentBracket = class {
 		}
 
 		this.canvas = document.getElementById(canvas_id);
-		this.canvas.style.cursor = 'grab';
+		//this.canvas.style.cursor = 'grab';
 
 		this.back_buffers = [];
 		//this.canvas.style.cursor = 'grab';
@@ -292,13 +320,12 @@ TournamentBracket = class {
 		this.zooming = false;
 		this.panning = false;
 
-		this.canvas.style.cursor = 'grab';
+		this.canvas.style.cursor = 'default';
 		this.render();
 	}
 
 	touchMove = (e) => {
 		if (this.panning) {
-
 			this.endX0 = e.touches[0].pageX;
 
 			this.endY0 = e.touches[0].pageY;
@@ -773,13 +800,18 @@ TournamentBracket = class {
 		for(var i = 0; i < names.length; i++){
 			
 			ctx.fillStyle = finished_colors[i];// this.makegrad(ctx, draw_y, this.settings.final_game_gradient, this.settings.final_game_color, this.settings.height);
-			ctx.fillRect(0, draw_y, this.settings.width, this.settings.height);
-			ctx.strokeRect(0, draw_y, this.settings.width, this.settings.height);
+			//ctx.fillRect(0, draw_y, this.settings.width, this.settings.height);
+			//ctx.strokeRect(0, draw_y, this.settings.width, this.settings.height);
+			ctx.beginPath();
+			ctx.roundRect(0, draw_y, this.settings.width, this.settings.height, 10);
+			ctx.fill();
+			ctx.stroke();
+
 
 			let temp = i + 1;
 			ctx.textBaseline = 'middle';
 			ctx.fillStyle = '#000';
-			ctx.fillText(/*temp + '\u00ba '  + */names[i], 5, draw_y + (this.settings.height / 2));
+			ctx.fillText(names[i], 5, draw_y + (this.settings.height / 2));
 
 			this.drawHintBalloon(ctx, balloon_xpos, draw_y, balloon_width, balloon_height, temp + '\u00ba ', finished_colors[i]);
 
@@ -826,7 +858,7 @@ TournamentBracket = class {
 
 		// Texto
 		ctx.fillStyle = "#000";
-		ctx.font = "18px sans-serif";
+		ctx.font = "bold 18px verdana";// "bold 18px sans-serif";
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
 		ctx.fillText(text, x + width / 2, y + height / 2);
